@@ -1,0 +1,96 @@
+import { createServerClient } from "@/lib/supabase-server";
+import { ProductSaleWithRelations } from "@/types";
+import { StatsCard } from "@/components/ui/StatsCard";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { Receipt, TrendingUp, Users } from "lucide-react";
+import { formatCurrency, formatDate } from "@/lib/utils";
+import { RecordSaleDialog } from "@/components/sales/RecordSaleDialog";
+
+export const dynamic = "force-dynamic";
+
+export default async function SalesPage() {
+  const supabase = createServerClient();
+  const { data } = await supabase
+    .from("product_sales")
+    .select("*, products(id, name, image_urls), customers(id, name)")
+    .order("sold_at", { ascending: false });
+
+  const sales = (data ?? []) as ProductSaleWithRelations[];
+
+  const totalRevenue = sales.reduce((s, r) => s + Number(r.sale_price || 0), 0);
+  const avgPrice = sales.length ? totalRevenue / sales.length : 0;
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <h1 className="text-2xl font-bold text-gray-900">销售记录</h1>
+        <RecordSaleDialog />
+      </div>
+
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+        <StatsCard
+          title="总成交笔数"
+          value={sales.length}
+          icon={Receipt}
+          accent="amber"
+        />
+        <StatsCard
+          title="总销售额"
+          value={formatCurrency(totalRevenue)}
+          icon={TrendingUp}
+          accent="green"
+        />
+        <StatsCard
+          title="平均客单价"
+          value={formatCurrency(avgPrice)}
+          icon={Users}
+          accent="blue"
+        />
+      </div>
+
+      <div className="rounded-xl border bg-white">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>产品</TableHead>
+              <TableHead>客户</TableHead>
+              <TableHead className="text-right">成交价</TableHead>
+              <TableHead>付款方式</TableHead>
+              <TableHead>成交时间</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {sales.length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={5} className="text-center text-gray-400">
+                  暂无销售记录
+                </TableCell>
+              </TableRow>
+            ) : (
+              sales.map((s) => (
+                <TableRow key={s.id}>
+                  <TableCell className="font-medium">
+                    {s.products?.name ?? "已删除产品"}
+                  </TableCell>
+                  <TableCell>{s.customers?.name ?? "-"}</TableCell>
+                  <TableCell className="text-right font-medium text-amber-700">
+                    {formatCurrency(s.sale_price)}
+                  </TableCell>
+                  <TableCell>{s.payment_method || "-"}</TableCell>
+                  <TableCell>{formatDate(s.sold_at)}</TableCell>
+                </TableRow>
+              ))
+            )}
+          </TableBody>
+        </Table>
+      </div>
+    </div>
+  );
+}
