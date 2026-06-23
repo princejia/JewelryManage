@@ -1,6 +1,7 @@
 import {
   LayoutDashboard,
   Gem,
+  Diamond,
   Receipt,
   Users,
   BarChart3,
@@ -16,6 +17,7 @@ export interface NavItem {
 export const NAV_ITEMS: NavItem[] = [
   { href: "/", label: "仪表盘", icon: LayoutDashboard },
   { href: "/products", label: "产品管理", icon: Gem },
+  { href: "/loose-stones", label: "裸石管理", icon: Diamond },
   { href: "/sales", label: "销售记录", icon: Receipt },
   { href: "/customers", label: "客户管理", icon: Users },
   { href: "/reports", label: "财务报表", icon: BarChart3 },

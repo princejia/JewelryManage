@@ -1,5 +1,9 @@
 import * as XLSX from "xlsx";
 import { Product } from "@/types";
+import {
+  GEMSTONE_CATEGORY_LABEL,
+  PRODUCT_FUNCTION_LABEL,
+} from "@/lib/constants";
 
 const STATUS_LABEL: Record<string, string> = {
   in_stock: "在库",
@@ -19,6 +23,12 @@ export function exportProductsToExcel(products: Product[], filename?: string) {
     "未结款(¥)": Number(p.unsettled_amount),
     "总重量(g)": p.total_weight ?? "",
     尺寸: p.size ?? "",
+    宝石分类: p.gemstone_category
+      ? GEMSTONE_CATEGORY_LABEL[p.gemstone_category]
+      : "",
+    功能分类: p.function_category
+      ? PRODUCT_FUNCTION_LABEL[p.function_category]
+      : "",
     产地: p.origin ?? "",
     镶嵌配石: p.inlaid_stones ?? "",
     裸石: p.is_loose_stone ? "是" : "否",

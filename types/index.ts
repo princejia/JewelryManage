@@ -1,5 +1,9 @@
 export type SaleStatus = "in_stock" | "sold" | "consignment";
 
+export type GemstoneCategory = "jade" | "sapphire";
+
+export type ProductFunction = "pendant" | "necklace" | "bracelet";
+
 export interface Product {
   id: string;
   image_urls: string[];
@@ -8,6 +12,9 @@ export interface Product {
   size: string | null;
   origin: string | null;
   inlaid_stones: string | null;
+  gemstone_category: GemstoneCategory | null;
+  function_category: ProductFunction | null;
+  source_loose_stone_id: string | null;
   price: number;
   purchase_price: number;
   sale_status: SaleStatus;
@@ -31,6 +38,27 @@ export interface Customer {
   notes: string | null;
   created_at: string;
 }
+
+export interface LooseStone {
+  id: string;
+  size: string | null;
+  material: string | null;
+  weight: number | null;
+  price: number;
+  gemstone_category: GemstoneCategory | null;
+  notes: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export type LooseStoneInput = {
+  size: string | null;
+  material: string | null;
+  weight: number | null;
+  price: number;
+  gemstone_category: GemstoneCategory | null;
+  notes: string | null;
+};
 
 export interface ProductSale {
   id: string;
@@ -63,6 +91,9 @@ export type ProductInput = {
   size: string | null;
   origin: string | null;
   inlaid_stones: string | null;
+  gemstone_category: GemstoneCategory | null;
+  function_category: ProductFunction | null;
+  source_loose_stone_id: string | null;
   price: number;
   purchase_price: number;
   sale_status: SaleStatus;

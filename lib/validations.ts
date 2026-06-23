@@ -2,6 +2,10 @@ import { z } from "zod";
 
 export const saleStatusEnum = z.enum(["in_stock", "sold", "consignment"]);
 
+export const gemstoneCategoryEnum = z.enum(["jade", "sapphire"]);
+
+export const productFunctionEnum = z.enum(["pendant", "necklace", "bracelet"]);
+
 export const productSchema = z.object({
   image_urls: z.array(z.string().url()).default([]),
   name: z.string().min(1, "产品名称必填").max(255),
@@ -9,6 +13,9 @@ export const productSchema = z.object({
   size: z.string().max(100).nullable().optional(),
   origin: z.string().max(100).nullable().optional(),
   inlaid_stones: z.string().nullable().optional(),
+  gemstone_category: gemstoneCategoryEnum.nullable().optional(),
+  function_category: productFunctionEnum.nullable().optional(),
+  source_loose_stone_id: z.string().uuid().nullable().optional(),
   price: z.coerce.number().nonnegative("价格必须为非负数"),
   purchase_price: z.coerce.number().nonnegative().default(0),
   sale_status: saleStatusEnum.default("in_stock"),
@@ -21,6 +28,17 @@ export const productSchema = z.object({
 });
 
 export type ProductSchema = z.infer<typeof productSchema>;
+
+export const looseStoneSchema = z.object({
+  size: z.string().max(100).nullable().optional(),
+  material: z.string().max(100).nullable().optional(),
+  weight: z.coerce.number().nonnegative().nullable().optional(),
+  price: z.coerce.number().nonnegative().default(0),
+  gemstone_category: gemstoneCategoryEnum.nullable().optional(),
+  notes: z.string().nullable().optional(),
+});
+
+export type LooseStoneSchema = z.infer<typeof looseStoneSchema>;
 
 export const customerSchema = z.object({
   name: z.string().min(1, "客户姓名必填").max(100),

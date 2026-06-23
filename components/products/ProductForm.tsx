@@ -1,15 +1,27 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Product, ProductInput, SaleStatus } from "@/types";
+import { LooseStone, Product, ProductInput, SaleStatus } from "@/types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { ImageUpload } from "@/components/ui/ImageUpload";
 import { formatCurrency } from "@/lib/utils";
+import {
+  GEMSTONE_CATEGORY_LABEL,
+  GEMSTONE_CATEGORY_OPTIONS,
+  PRODUCT_FUNCTION_OPTIONS,
+} from "@/lib/constants";
 
 const ORIGIN_PRESETS = ["深圳水贝", "香港", "广州番禺", "周大福", "其他"];
 
@@ -31,6 +43,9 @@ function toFormState(p?: Product): ProductInput {
     size: p?.size ?? "",
     origin: p?.origin ?? "",
     inlaid_stones: p?.inlaid_stones ?? "",
+    gemstone_category: p?.gemstone_category ?? null,
+    function_category: p?.function_category ?? null,
+    source_loose_stone_id: p?.source_loose_stone_id ?? null,
     price: p?.price ?? 0,
     purchase_price: p?.purchase_price ?? 0,
     sale_status: p?.sale_status ?? "in_stock",
@@ -48,12 +63,29 @@ export function ProductForm({ initial }: ProductFormProps) {
   const [form, setForm] = useState<ProductInput>(toFormState(initial));
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [fromLooseStone, setFromLooseStone] = useState(
+    !!initial?.source_loose_stone_id
+  );
+  const [looseStones, setLooseStones] = useState<LooseStone[]>([]);
+
+  useEffect(() => {
+    if (!fromLooseStone || looseStones.length > 0) return;
+    fetch("/api/loose-stones")
+      .then((res) => res.json())
+      .then((json) => setLooseStones(json.data ?? []))
+      .catch(() => setLooseStones([]));
+  }, [fromLooseStone, looseStones.length]);
 
   const unsettled = Number(form.price || 0) - Number(form.settled_amount || 0);
   const profit = Number(form.price || 0) - Number(form.purchase_price || 0);
 
   function set<K extends keyof ProductInput>(key: K, value: ProductInput[K]) {
     setForm((prev) => ({ ...prev, [key]: value }));
+  }
+
+  function handleFromLooseStoneToggle(checked: boolean) {
+    setFromLooseStone(checked);
+    if (!checked) set("source_loose_stone_id", null);
   }
 
   function handleStatusChange(status: SaleStatus) {
@@ -99,6 +131,11 @@ export function ProductForm({ initial }: ProductFormProps) {
       size: form.size || null,
       origin: form.origin || null,
       inlaid_stones: form.inlaid_stones || null,
+      gemstone_category: form.gemstone_category || null,
+      function_category: form.function_category || null,
+      source_loose_stone_id: fromLooseStone
+        ? form.source_loose_stone_id || null
+        : null,
       notes: form.notes || null,
       purchased_at: form.purchased_at || null,
       sold_at: form.sold_at || null,
@@ -204,6 +241,54 @@ export function ProductForm({ initial }: ProductFormProps) {
         </div>
 
         <div className="space-y-2">
+          <Label>宝石分类</Label>
+          <Select
+            value={form.gemstone_category ?? ""}
+            onValueChange={(v) =>
+              set(
+                "gemstone_category",
+                (v || null) as ProductInput["gemstone_category"]
+              )
+            }
+          >
+            <SelectTrigger>
+              <SelectValue placeholder="选择宝石分类" />
+            </SelectTrigger>
+            <SelectContent>
+              {GEMSTONE_CATEGORY_OPTIONS.map((o) => (
+                <SelectItem key={o.value} value={o.value}>
+                  {o.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+
+        <div className="space-y-2">
+          <Label>功能分类</Label>
+          <Select
+            value={form.function_category ?? ""}
+            onValueChange={(v) =>
+              set(
+                "function_category",
+                (v || null) as ProductInput["function_category"]
+              )
+            }
+          >
+            <SelectTrigger>
+              <SelectValue placeholder="选择功能分类" />
+            </SelectTrigger>
+            <SelectContent>
+              {PRODUCT_FUNCTION_OPTIONS.map((o) => (
+                <SelectItem key={o.value} value={o.value}>
+                  {o.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+
+        <div className="space-y-2">
           <Label htmlFor="price">价格 (¥) *</Label>
           <Input
             id="price"
@@ -295,6 +380,53 @@ export function ProductForm({ initial }: ProductFormProps) {
           />
           <Label htmlFor="is_loose_stone">裸石</Label>
         </div>
+      </div>
+
+      {/* 从现有裸石生产 */}
+      <div className="space-y-3 rounded-md border border-gray-200 p-4">
+        <div className="flex items-center gap-3">
+          <Switch
+            checked={fromLooseStone}
+            onCheckedChange={handleFromLooseStoneToggle}
+            id="from_loose_stone"
+          />
+          <Label htmlFor="from_loose_stone">从现有裸石生产</Label>
+        </div>
+        {fromLooseStone && (
+          <div className="space-y-2">
+            <Label>选择裸石</Label>
+            <Select
+              value={form.source_loose_stone_id ?? ""}
+              onValueChange={(v) => set("source_loose_stone_id", v || null)}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="选择一颗裸石" />
+              </SelectTrigger>
+              <SelectContent>
+                {looseStones.length === 0 ? (
+                  <div className="px-2 py-1.5 text-sm text-gray-400">
+                    暂无裸石数据
+                  </div>
+                ) : (
+                  looseStones.map((s) => (
+                    <SelectItem key={s.id} value={s.id}>
+                      {[
+                        s.gemstone_category
+                          ? GEMSTONE_CATEGORY_LABEL[s.gemstone_category]
+                          : null,
+                        s.material,
+                        s.size,
+                        s.weight != null ? `${s.weight}g` : null,
+                      ]
+                        .filter(Boolean)
+                        .join(" · ") || "裸石"}
+                    </SelectItem>
+                  ))
+                )}
+              </SelectContent>
+            </Select>
+          </div>
+        )}
       </div>
 
       {/* 日期 */}

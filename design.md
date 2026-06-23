@@ -61,6 +61,9 @@
 | size | 尺寸 | VARCHAR(100) | 尺寸信息，如：戒指12号、手链18cm |
 | origin | 产地 | VARCHAR(100) | 产地信息，如：深圳水贝、香港等 |
 | inlaid_stones | 镶嵌配石 | TEXT | 配石描述，如：主石1ct D/VVS1，配石0.3ct |
+| gemstone_category | 宝石分类 | ENUM | jade（翡翠）/ sapphire（蓝宝），可为空 |
+| function_category | 功能分类 | ENUM | pendant（吊坠）/ necklace（项链）/ bracelet（手镯），可为空 |
+| source_loose_stone_id | 来源裸石 | UUID FK | 关联 loose_stones.id，可为空（由裸石加工生产时填写） |
 | price | 价格(¥) | DECIMAL(12,2) | 销售价格，人民币，必填 |
 | purchase_price | 进货价(¥) | DECIMAL(12,2) | 购入成本，用于计算利润 |
 | sale_status | 销售情况 | ENUM | in_stock（在库）/ sold（已售）/ consignment（借售）|
@@ -98,7 +101,23 @@
 | sold_at | 成交时间 | DATE | 实际售出日期 |
 | created_at | 记录时间 | TIMESTAMPTZ | 自动设置 |
 
-### 2.4 SQL 建表语句
+### 2.4 辅助表：loose_stones（裸石表）
+
+裸石为未加工的原石，products 可由裸石加工生产（通过 `products.source_loose_stone_id` 建立关联）。
+
+| 字段名 | 中文名 | 类型 | 说明 |
+|--------|--------|------|------|
+| id | 主键 | UUID | 唯一标识 |
+| size | 尺寸 | VARCHAR(100) | 裸石尺寸，如：10×8mm |
+| material | 材质 | VARCHAR(100) | 材质描述，如：天然翡翠、矢车菊蓝宝 |
+| weight | 克重 | DECIMAL(10,3) | 裸石重量，单位克 |
+| price | 价格 | DECIMAL(12,2) | 裸石价格 |
+| gemstone_category | 宝石分类 | ENUM | jade（翡翠）/ sapphire（蓝宝） |
+| notes | 备注 | TEXT | 额外备注，可选填 |
+| created_at | 创建时间 | TIMESTAMPTZ | 自动设置 |
+| updated_at | 更新时间 | TIMESTAMPTZ | 自动维护 |
+
+### 2.5 SQL 建表语句
 
 在 Supabase SQL Editor 中执行：
 
@@ -113,6 +132,32 @@ CREATE TYPE sale_status_enum AS ENUM (
   'consignment'     -- 借售
 );
 
+-- 宝石分类枚举
+CREATE TYPE gemstone_category_enum AS ENUM (
+  'jade',           -- 翡翠
+  'sapphire'        -- 蓝宝
+);
+
+-- 功能分类枚举
+CREATE TYPE product_function_enum AS ENUM (
+  'pendant',        -- 吊坠
+  'necklace',       -- 项链
+  'bracelet'        -- 手镯
+);
+
+-- 裸石表（products 可由裸石加工生产）
+CREATE TABLE loose_stones (
+  id                 UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  size               VARCHAR(100),
+  material           VARCHAR(100),
+  weight             DECIMAL(10,3),
+  price              DECIMAL(12,2) DEFAULT 0,
+  gemstone_category  gemstone_category_enum,
+  notes              TEXT,
+  created_at         TIMESTAMPTZ DEFAULT NOW(),
+  updated_at         TIMESTAMPTZ DEFAULT NOW()
+);
+
 -- 产品主表
 CREATE TABLE products (
   id               UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
@@ -122,6 +167,9 @@ CREATE TABLE products (
   size             VARCHAR(100),
   origin           VARCHAR(100),
   inlaid_stones    TEXT,
+  gemstone_category gemstone_category_enum,
+  function_category product_function_enum,
+  source_loose_stone_id UUID REFERENCES loose_stones(id) ON DELETE SET NULL,
   price            DECIMAL(12,2) NOT NULL DEFAULT 0,
   purchase_price   DECIMAL(12,2) DEFAULT 0,
   sale_status      sale_status_enum DEFAULT 'in_stock',
@@ -399,6 +447,9 @@ export interface Product {
   size: string | null
   origin: string | null
   inlaid_stones: string | null
+  gemstone_category: 'jade' | 'sapphire' | null
+  function_category: 'pendant' | 'necklace' | 'bracelet' | null
+  source_loose_stone_id: string | null
   price: number
   purchase_price: number
   sale_status: SaleStatus
@@ -609,6 +660,9 @@ export async function POST(req: NextRequest) {
 | 尺寸 | 文本输入 | 如：戒指12号、手链18cm，可选填 |
 | 产地 | 下拉选择 + 自定义输入 | 预设常用产地，支持手动输入 |
 | 镶嵌配石 | 多行文本域 | 描述主石、配石详情 |
+| 宝石分类 | 下拉选择 | 翡翠 / 蓝宝，可选填 |
+| 功能分类 | 下拉选择 | 吊坠 / 项链 / 手镯，可选填 |
+| 从现有裸石生产 | 开关 + 下拉选择 | 勾选后可选择一颗已录入的裸石作为加工来源 |
 | 价格 | 数字输入 | 人民币，前缀 ¥，必填 |
 | 进货价 | 数字输入 | 用于自动计算利润，仅内部可见 |
 | 销售情况 | 单选按钮组 | 在库 / 已售 / 借售；选已售时显示出售时间 |
