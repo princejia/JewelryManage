@@ -39,6 +39,7 @@ export function ProductCard({ product }: { product: Product }) {
             {product.total_weight != null && (
               <span>{product.total_weight}g</span>
             )}
+            {product.size && <span>{product.size}</span>}
             {product.origin && <span>{product.origin}</span>}
             {product.is_loose_stone && (
               <span className="text-blue-600">裸石</span>

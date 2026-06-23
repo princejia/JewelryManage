@@ -26,6 +26,7 @@ CREATE TABLE IF NOT EXISTS products (
   image_urls       TEXT[] DEFAULT '{}',
   name             VARCHAR(255) NOT NULL,
   total_weight     DECIMAL(10,3),
+  size             VARCHAR(100),
   origin           VARCHAR(100),
   inlaid_stones    TEXT,
   price            DECIMAL(12,2) NOT NULL DEFAULT 0,
@@ -44,6 +45,9 @@ CREATE TABLE IF NOT EXISTS products (
   created_at       TIMESTAMPTZ DEFAULT NOW(),
   updated_at       TIMESTAMPTZ DEFAULT NOW()
 );
+
+-- 已有数据库追加尺寸字段（幂等）
+ALTER TABLE products ADD COLUMN IF NOT EXISTS size VARCHAR(100);
 
 -- ------------------------------------------------------------
 -- 客户表

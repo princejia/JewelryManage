@@ -28,6 +28,7 @@ function toFormState(p?: Product): ProductInput {
     image_urls: p?.image_urls ?? [],
     name: p?.name ?? "",
     total_weight: p?.total_weight ?? null,
+    size: p?.size ?? "",
     origin: p?.origin ?? "",
     inlaid_stones: p?.inlaid_stones ?? "",
     price: p?.price ?? 0,
@@ -95,6 +96,7 @@ export function ProductForm({ initial }: ProductFormProps) {
       price: Number(form.price),
       purchase_price: Number(form.purchase_price),
       settled_amount: Number(form.settled_amount),
+      size: form.size || null,
       origin: form.origin || null,
       inlaid_stones: form.inlaid_stones || null,
       notes: form.notes || null,
@@ -162,6 +164,16 @@ export function ProductForm({ initial }: ProductFormProps) {
                 e.target.value === "" ? null : Number(e.target.value)
               )
             }
+          />
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="size">尺寸</Label>
+          <Input
+            id="size"
+            value={form.size ?? ""}
+            onChange={(e) => set("size", e.target.value)}
+            placeholder="如：12号 / 18cm"
           />
         </div>
 

@@ -5,6 +5,7 @@ export interface Product {
   image_urls: string[];
   name: string;
   total_weight: number | null;
+  size: string | null;
   origin: string | null;
   inlaid_stones: string | null;
   price: number;
@@ -59,6 +60,7 @@ export type ProductInput = {
   image_urls: string[];
   name: string;
   total_weight: number | null;
+  size: string | null;
   origin: string | null;
   inlaid_stones: string | null;
   price: number;

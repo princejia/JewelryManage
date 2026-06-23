@@ -6,6 +6,7 @@ export const productSchema = z.object({
   image_urls: z.array(z.string().url()).default([]),
   name: z.string().min(1, "产品名称必填").max(255),
   total_weight: z.coerce.number().nonnegative().nullable().optional(),
+  size: z.string().max(100).nullable().optional(),
   origin: z.string().max(100).nullable().optional(),
   inlaid_stones: z.string().nullable().optional(),
   price: z.coerce.number().nonnegative("价格必须为非负数"),

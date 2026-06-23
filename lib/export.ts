@@ -18,6 +18,7 @@ export function exportProductsToExcel(products: Product[], filename?: string) {
     "结款(¥)": Number(p.settled_amount),
     "未结款(¥)": Number(p.unsettled_amount),
     "总重量(g)": p.total_weight ?? "",
+    尺寸: p.size ?? "",
     产地: p.origin ?? "",
     镶嵌配石: p.inlaid_stones ?? "",
     裸石: p.is_loose_stone ? "是" : "否",

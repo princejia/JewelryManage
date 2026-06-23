@@ -58,6 +58,7 @@
 | image_urls | 产品图片 | TEXT[] | 图片 URL 数组，存储在 Supabase Storage |
 | name | 产品名称 | VARCHAR(255) | 产品完整名称，如：18K金钻石戒指 |
 | total_weight | 总重量(g) | DECIMAL(10,3) | 产品总重量，单位克，精度至小数点后3位 |
+| size | 尺寸 | VARCHAR(100) | 尺寸信息，如：戒指12号、手链18cm |
 | origin | 产地 | VARCHAR(100) | 产地信息，如：深圳水贝、香港等 |
 | inlaid_stones | 镶嵌配石 | TEXT | 配石描述，如：主石1ct D/VVS1，配石0.3ct |
 | price | 价格(¥) | DECIMAL(12,2) | 销售价格，人民币，必填 |
@@ -118,6 +119,7 @@ CREATE TABLE products (
   image_urls       TEXT[] DEFAULT '{}',
   name             VARCHAR(255) NOT NULL,
   total_weight     DECIMAL(10,3),
+  size             VARCHAR(100),
   origin           VARCHAR(100),
   inlaid_stones    TEXT,
   price            DECIMAL(12,2) NOT NULL DEFAULT 0,
@@ -394,6 +396,7 @@ export interface Product {
   image_urls: string[]
   name: string
   total_weight: number | null
+  size: string | null
   origin: string | null
   inlaid_stones: string | null
   price: number
@@ -603,6 +606,7 @@ export async function POST(req: NextRequest) {
 | 产品图片 | 图片上传组件 | 拖拽/点击上传，多图预览，支持删除，显示上传进度 |
 | 产品名称 | 文本输入 | 必填，最多 255 字符 |
 | 总重量 | 数字输入 | 单位：克，保留 3 位小数 |
+| 尺寸 | 文本输入 | 如：戒指12号、手链18cm，可选填 |
 | 产地 | 下拉选择 + 自定义输入 | 预设常用产地，支持手动输入 |
 | 镶嵌配石 | 多行文本域 | 描述主石、配石详情 |
 | 价格 | 数字输入 | 人民币，前缀 ¥，必填 |
