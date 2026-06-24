@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabase-server";
 
-export const runtime = "edge";
+export const runtime = "nodejs";
 
 const BUCKET = "product-images";
 const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/webp"];

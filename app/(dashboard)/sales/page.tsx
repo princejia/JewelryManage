@@ -1,5 +1,3 @@
-export const runtime = "edge";
-
 import { createServerClient } from "@/lib/supabase-server";
 import { ProductSaleWithRelations } from "@/types";
 import { StatsCard } from "@/components/ui/StatsCard";
