@@ -2,7 +2,7 @@
 
 import { useState, useRef } from "react";
 import Image from "next/image";
-import { Upload, X, Loader2 } from "lucide-react";
+import { Upload, X, Loader2, ArrowLeft, ArrowRight, Star } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface ImageUploadProps {
@@ -45,6 +45,22 @@ export function ImageUpload({ value, onChange }: ImageUploadProps) {
 
   function removeImage(url: string) {
     onChange(value.filter((u) => u !== url));
+  }
+
+  function moveImage(from: number, to: number) {
+    if (to < 0 || to >= value.length) return;
+    const next = [...value];
+    const [moved] = next.splice(from, 1);
+    next.splice(to, 0, moved);
+    onChange(next);
+  }
+
+  function setFirst(index: number) {
+    if (index === 0) return;
+    const next = [...value];
+    const [moved] = next.splice(index, 1);
+    next.unshift(moved);
+    onChange(next);
   }
 
   return (
@@ -93,12 +109,17 @@ export function ImageUpload({ value, onChange }: ImageUploadProps) {
 
       {value.length > 0 && (
         <div className="grid grid-cols-3 gap-3 sm:grid-cols-4">
-          {value.map((url) => (
+          {value.map((url, index) => (
             <div
               key={url}
               className="group relative aspect-square overflow-hidden rounded-lg border bg-gray-50"
             >
               <Image src={url} alt="产品图片" fill className="object-cover" />
+              {index === 0 && (
+                <span className="absolute left-1 top-1 rounded bg-amber-500 px-1.5 py-0.5 text-[10px] font-medium text-white">
+                  首图
+                </span>
+              )}
               <button
                 type="button"
                 onClick={() => removeImage(url)}
@@ -106,6 +127,35 @@ export function ImageUpload({ value, onChange }: ImageUploadProps) {
               >
                 <X className="h-3 w-3" />
               </button>
+              <div className="absolute inset-x-0 bottom-0 flex items-center justify-center gap-1 bg-black/50 p-1 opacity-0 transition-opacity group-hover:opacity-100">
+                <button
+                  type="button"
+                  onClick={() => moveImage(index, index - 1)}
+                  disabled={index === 0}
+                  title="向前移动"
+                  className="rounded p-1 text-white hover:bg-white/20 disabled:opacity-30"
+                >
+                  <ArrowLeft className="h-3.5 w-3.5" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setFirst(index)}
+                  disabled={index === 0}
+                  title="设为首图"
+                  className="rounded p-1 text-white hover:bg-white/20 disabled:opacity-30"
+                >
+                  <Star className="h-3.5 w-3.5" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => moveImage(index, index + 1)}
+                  disabled={index === value.length - 1}
+                  title="向后移动"
+                  className="rounded p-1 text-white hover:bg-white/20 disabled:opacity-30"
+                >
+                  <ArrowRight className="h-3.5 w-3.5" />
+                </button>
+              </div>
             </div>
           ))}
         </div>

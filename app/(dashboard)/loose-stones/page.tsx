@@ -1,9 +1,10 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
-import { Plus, LayoutGrid, List, Loader2 } from "lucide-react";
+import { Plus, LayoutGrid, List, Loader2, Download } from "lucide-react";
 import { LooseStone } from "@/types";
 import { Button } from "@/components/ui/button";
+import { exportLooseStonesToExcel } from "@/lib/export";
 import { LooseStoneCard } from "@/components/loose-stones/LooseStoneCard";
 import { LooseStoneTable } from "@/components/loose-stones/LooseStoneTable";
 import { LooseStoneFormDialog } from "@/components/loose-stones/LooseStoneFormDialog";
@@ -87,6 +88,14 @@ export default function LooseStonesPage() {
               <List className="h-4 w-4" />
             </button>
           </div>
+          <Button
+            variant="outline"
+            onClick={() => exportLooseStonesToExcel(stones)}
+            disabled={stones.length === 0}
+          >
+            <Download className="h-4 w-4" />
+            导出 Excel
+          </Button>
           <Button onClick={openCreate}>
             <Plus className="h-4 w-4" />
             新增裸石
