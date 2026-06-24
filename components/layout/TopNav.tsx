@@ -26,16 +26,20 @@ export function TopNav() {
 
   return (
     <header className="flex h-16 items-center justify-between border-b bg-white px-4 sm:px-6">
-      <div className="md:hidden flex items-center gap-2">
+      <div className="md:hidden flex min-w-0 items-center gap-2">
         <MobileNav />
-        <span className="text-xl">💎</span>
-        <span className="font-semibold text-amber-800">珠宝管理系统</span>
+        <span className="text-xl shrink-0">💎</span>
+        <span className="truncate text-base font-semibold text-amber-800">
+          珠宝管理系统
+        </span>
       </div>
-      <div className="ml-auto flex items-center gap-4">
-        {email && <span className="text-sm text-gray-600">{email}</span>}
+      <div className="ml-auto flex shrink-0 items-center gap-2 sm:gap-4">
+        {email && (
+          <span className="hidden text-sm text-gray-600 sm:inline">{email}</span>
+        )}
         <Button variant="ghost" size="sm" onClick={handleLogout}>
           <LogOut className="h-4 w-4" />
-          退出
+          <span className="hidden sm:inline">退出</span>
         </Button>
       </div>
     </header>
