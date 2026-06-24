@@ -851,7 +851,7 @@ git push -u origin main
 
 1. 访问 https://dash.cloudflare.com → **Workers & Pages → Create → Pages → 连接 Git**，选择本仓库
 2. 构建配置：
-   - **Build command：** `npx @cloudflare/next-on-pages@1`
+   - **Build command：** `npx @cloudflare/next-on-pages@1.13.15`（需锁定 1.13.15，更新版要求 Next ≥ 14.3 / 15）
    - **Build output directory：** `.vercel/output/static`
 3. **Settings → Functions → Compatibility flags** 添加 `nodejs_compat`（Production 与 Preview 均需添加），Compatibility date 设为 `2024-09-23` 或更新（仓库根目录的 `wrangler.toml` 已预置）
 4. 在 **Settings → Environment variables** 中添加 `.env.local` 中的三个变量
