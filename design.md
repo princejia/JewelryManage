@@ -853,10 +853,12 @@ git push -u origin main
 2. 构建配置：
    - **Build command：** `npx @cloudflare/next-on-pages@1.13.15`（需锁定 1.13.15，更新版要求 Next ≥ 14.3 / 15）
    - **Build output directory：** `.vercel/output/static`
-3. **Settings → Functions → Compatibility flags** 添加 `nodejs_compat`（Production 与 Preview 均需添加），Compatibility date 设为 `2024-09-23` 或更新（仓库根目录的 `wrangler.toml` 已预置）
-4. 在 **Settings → Environment variables** 中添加 `.env.local` 中的三个变量
+3. **Settings → Functions → Compatibility flags** 添加 `nodejs_compat`（Production 与 Preview 均需添加），Compatibility date 设为 `2024-09-23` 或更新
+4. 在 **Settings → Environment variables** 中添加 `.env.local` 中的三个变量（Production 与 Preview 均需添加，保存后重新部署生效）
 5. 部署完成后，在 Supabase → Authentication → URL Configuration 将 Cloudflare 域名加入允许列表
 6. 后续每次 `git push` 自动触发重新部署
+
+> **重要：不要在仓库里放 `wrangler.toml`。** 一旦存在该文件，Cloudflare Pages 会把它当作配置的唯一来源，从而**忽略 Dashboard 中设置的环境变量**（表现为"发布后环境变量消失"）。请把构建命令、输出目录、兼容性标志、环境变量全部在 Dashboard 中配置。
 
 > **关于国内访问：** Cloudflare 默认的 `*.pages.dev` 域名在中国大陆常被屏蔽 / 限速。如需稳定的国内访问，建议绑定自定义域名并配合备案域名 + 国内线路；Supabase 服务器位于海外，数据库延迟亦会影响访问体验。
 
