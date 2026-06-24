@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { Product } from "@/types";
 import { StatusBadge } from "@/components/ui/StatusBadge";
-import { formatCurrency, formatDate } from "@/lib/utils";
+import { formatCurrency, formatDate, formatProductCode } from "@/lib/utils";
 import {
   Table,
   TableBody,
@@ -17,6 +17,7 @@ export function ProductTable({ products }: { products: Product[] }) {
       <Table>
         <TableHeader>
           <TableRow>
+            <TableHead>编号</TableHead>
             <TableHead>产品名称</TableHead>
             <TableHead>状态</TableHead>
             <TableHead className="text-right">价格</TableHead>
@@ -29,13 +30,16 @@ export function ProductTable({ products }: { products: Product[] }) {
         <TableBody>
           {products.length === 0 ? (
             <TableRow>
-              <TableCell colSpan={7} className="text-center text-gray-400">
+              <TableCell colSpan={8} className="text-center text-gray-400">
                 暂无数据
               </TableCell>
             </TableRow>
           ) : (
             products.map((p) => (
               <TableRow key={p.id} className="cursor-pointer">
+                <TableCell className="font-mono text-xs text-gray-500">
+                  {formatProductCode("P", p.created_at)}
+                </TableCell>
                 <TableCell>
                   <Link
                     href={`/products/${p.id}`}

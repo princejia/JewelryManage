@@ -32,3 +32,20 @@ export function formatDateTime(value: string | null | undefined): string {
     d.getHours()
   )}:${pad(d.getMinutes())}`;
 }
+
+/**
+ * 生成产品/裸石编号：前缀 + 年月日时分秒（取自创建时间）。
+ * 产品以 P 开头，裸石以 L 开头。
+ */
+export function formatProductCode(
+  prefix: "P" | "L",
+  createdAt: string | null | undefined
+): string {
+  if (!createdAt) return prefix;
+  const d = new Date(createdAt);
+  if (Number.isNaN(d.getTime())) return prefix;
+  const pad = (x: number) => String(x).padStart(2, "0");
+  return `${prefix}${d.getFullYear()}${pad(d.getMonth() + 1)}${pad(
+    d.getDate()
+  )}${pad(d.getHours())}${pad(d.getMinutes())}${pad(d.getSeconds())}`;
+}

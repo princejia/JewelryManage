@@ -16,11 +16,12 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { ImageUpload } from "@/components/ui/ImageUpload";
+import { Combobox } from "@/components/ui/Combobox";
 import { formatCurrency } from "@/lib/utils";
 import {
-  GEMSTONE_CATEGORY_LABEL,
-  GEMSTONE_CATEGORY_OPTIONS,
-  PRODUCT_FUNCTION_OPTIONS,
+  GEMSTONE_CATEGORY_SUGGESTIONS,
+  PRODUCT_FUNCTION_SUGGESTIONS,
+  categoryLabel,
 } from "@/lib/constants";
 
 const ORIGIN_PRESETS = ["深圳水贝", "香港", "广州番禺", "周大福", "其他"];
@@ -67,6 +68,27 @@ export function ProductForm({ initial }: ProductFormProps) {
     !!initial?.source_loose_stone_id
   );
   const [looseStones, setLooseStones] = useState<LooseStone[]>([]);
+  const [gemstoneOptions, setGemstoneOptions] = useState<string[]>([]);
+  const [functionOptions, setFunctionOptions] = useState<string[]>([]);
+
+  useEffect(() => {
+    fetch("/api/options")
+      .then((res) => res.json())
+      .then((json) => {
+        setGemstoneOptions(json.gemstone_category ?? []);
+        setFunctionOptions(json.function_category ?? []);
+      })
+      .catch(() => {});
+  }, []);
+
+  const gemstoneSuggestions = [
+    ...GEMSTONE_CATEGORY_SUGGESTIONS,
+    ...gemstoneOptions,
+  ];
+  const functionSuggestions = [
+    ...PRODUCT_FUNCTION_SUGGESTIONS,
+    ...functionOptions,
+  ];
 
   useEffect(() => {
     if (!fromLooseStone || looseStones.length > 0) return;
@@ -241,51 +263,27 @@ export function ProductForm({ initial }: ProductFormProps) {
         </div>
 
         <div className="space-y-2">
-          <Label>宝石分类</Label>
-          <Select
+          <Label htmlFor="gemstone_category">宝石分类</Label>
+          <Combobox
+            id="gemstone_category"
             value={form.gemstone_category ?? ""}
-            onValueChange={(v) =>
-              set(
-                "gemstone_category",
-                (v || null) as ProductInput["gemstone_category"]
-              )
-            }
-          >
-            <SelectTrigger>
-              <SelectValue placeholder="选择宝石分类" />
-            </SelectTrigger>
-            <SelectContent>
-              {GEMSTONE_CATEGORY_OPTIONS.map((o) => (
-                <SelectItem key={o.value} value={o.value}>
-                  {o.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+            onChange={(v) => set("gemstone_category", v || null)}
+            options={gemstoneSuggestions}
+            placeholder="输入或选择宝石分类"
+            maxLength={100}
+          />
         </div>
 
         <div className="space-y-2">
-          <Label>功能分类</Label>
-          <Select
+          <Label htmlFor="function_category">功能分类</Label>
+          <Combobox
+            id="function_category"
             value={form.function_category ?? ""}
-            onValueChange={(v) =>
-              set(
-                "function_category",
-                (v || null) as ProductInput["function_category"]
-              )
-            }
-          >
-            <SelectTrigger>
-              <SelectValue placeholder="选择功能分类" />
-            </SelectTrigger>
-            <SelectContent>
-              {PRODUCT_FUNCTION_OPTIONS.map((o) => (
-                <SelectItem key={o.value} value={o.value}>
-                  {o.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+            onChange={(v) => set("function_category", v || null)}
+            options={functionSuggestions}
+            placeholder="输入或选择功能分类"
+            maxLength={100}
+          />
         </div>
 
         <div className="space-y-2">
@@ -412,7 +410,7 @@ export function ProductForm({ initial }: ProductFormProps) {
                     <SelectItem key={s.id} value={s.id}>
                       {[
                         s.gemstone_category
-                          ? GEMSTONE_CATEGORY_LABEL[s.gemstone_category]
+                          ? categoryLabel(s.gemstone_category)
                           : null,
                         s.material,
                         s.size,

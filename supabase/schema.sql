@@ -46,11 +46,12 @@ END$$;
 -- ------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS loose_stones (
   id                 UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  image_urls         TEXT[] DEFAULT '{}',
   size               VARCHAR(100),
   material           VARCHAR(100),
   weight             DECIMAL(10,3),
   price              DECIMAL(12,2) DEFAULT 0,
-  gemstone_category  gemstone_category_enum,
+  gemstone_category  VARCHAR(100),
   notes              TEXT,
   created_at         TIMESTAMPTZ DEFAULT NOW(),
   updated_at         TIMESTAMPTZ DEFAULT NOW()
@@ -67,8 +68,8 @@ CREATE TABLE IF NOT EXISTS products (
   size             VARCHAR(100),
   origin           VARCHAR(100),
   inlaid_stones    TEXT,
-  gemstone_category gemstone_category_enum,
-  function_category product_function_enum,
+  gemstone_category VARCHAR(100),
+  function_category VARCHAR(100),
   source_loose_stone_id UUID REFERENCES loose_stones(id) ON DELETE SET NULL,
   price            DECIMAL(12,2) NOT NULL DEFAULT 0,
   purchase_price   DECIMAL(12,2) DEFAULT 0,
@@ -91,9 +92,17 @@ CREATE TABLE IF NOT EXISTS products (
 ALTER TABLE products ADD COLUMN IF NOT EXISTS size VARCHAR(100);
 
 -- 已有数据库追加宝石分类 / 功能分类 / 裸石来源字段（幂等）
-ALTER TABLE products ADD COLUMN IF NOT EXISTS gemstone_category gemstone_category_enum;
-ALTER TABLE products ADD COLUMN IF NOT EXISTS function_category product_function_enum;
+ALTER TABLE products ADD COLUMN IF NOT EXISTS gemstone_category VARCHAR(100);
+ALTER TABLE products ADD COLUMN IF NOT EXISTS function_category VARCHAR(100);
 ALTER TABLE products ADD COLUMN IF NOT EXISTS source_loose_stone_id UUID;
+
+-- 将分类字段由枚举改为自由文本（幂等，可重复执行）
+ALTER TABLE products      ALTER COLUMN gemstone_category TYPE VARCHAR(100) USING gemstone_category::text;
+ALTER TABLE products      ALTER COLUMN function_category TYPE VARCHAR(100) USING function_category::text;
+ALTER TABLE loose_stones  ALTER COLUMN gemstone_category TYPE VARCHAR(100) USING gemstone_category::text;
+
+-- 裸石追加图片字段（幂等）
+ALTER TABLE loose_stones ADD COLUMN IF NOT EXISTS image_urls TEXT[] DEFAULT '{}';
 
 -- 已有数据库补建裸石外键（幂等）
 DO $$

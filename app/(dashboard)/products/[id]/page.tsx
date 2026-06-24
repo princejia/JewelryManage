@@ -5,6 +5,7 @@ import { createServerClient } from "@/lib/supabase-server";
 import { Product } from "@/types";
 import { ProductForm } from "@/components/products/ProductForm";
 import { DeleteProductButton } from "@/components/products/DeleteProductButton";
+import { formatProductCode } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
 
@@ -34,7 +35,12 @@ export default async function ProductDetailPage({
       </Link>
 
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-gray-900">编辑产品</h1>
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">编辑产品</h1>
+          <p className="mt-1 font-mono text-sm text-gray-400">
+            编号：{formatProductCode("P", product.created_at)}
+          </p>
+        </div>
         <DeleteProductButton id={product.id} />
       </div>
 

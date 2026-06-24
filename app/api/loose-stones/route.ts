@@ -5,14 +5,24 @@ import { looseStoneSchema } from "@/lib/validations";
 export async function GET(req: NextRequest) {
   const { searchParams } = req.nextUrl;
   const gemstone = searchParams.get("gemstone_category");
+  const search = searchParams.get("search");
+  const price_min = searchParams.get("price_min");
+  const price_max = searchParams.get("price_max");
+  const sort_by = searchParams.get("sort_by") || "created_at";
+  const order = searchParams.get("order") || "desc";
+
+  const allowedSort = ["price", "created_at"];
+  const sortColumn = allowedSort.includes(sort_by) ? sort_by : "created_at";
 
   const supabase = createServerClient();
-  let query = supabase
-    .from("loose_stones")
-    .select("*")
-    .order("created_at", { ascending: false });
+  let query = supabase.from("loose_stones").select("*");
 
-  if (gemstone) query = query.eq("gemstone_category", gemstone);
+  if (gemstone) query = query.ilike("gemstone_category", `%${gemstone}%`);
+  if (search) query = query.ilike("material", `%${search}%`);
+  if (price_min) query = query.gte("price", Number(price_min));
+  if (price_max) query = query.lte("price", Number(price_max));
+
+  query = query.order(sortColumn, { ascending: order === "asc" });
 
   const { data, error } = await query;
 

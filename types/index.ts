@@ -1,8 +1,9 @@
 export type SaleStatus = "in_stock" | "sold" | "consignment";
 
-export type GemstoneCategory = "jade" | "sapphire";
+// 宝石分类 / 功能分类已改为自由文本
+export type GemstoneCategory = string;
 
-export type ProductFunction = "pendant" | "necklace" | "bracelet";
+export type ProductFunction = string;
 
 export interface Product {
   id: string;
@@ -41,6 +42,7 @@ export interface Customer {
 
 export interface LooseStone {
   id: string;
+  image_urls: string[];
   size: string | null;
   material: string | null;
   weight: number | null;
@@ -52,6 +54,7 @@ export interface LooseStone {
 }
 
 export type LooseStoneInput = {
+  image_urls: string[];
   size: string | null;
   material: string | null;
   weight: number | null;

@@ -61,8 +61,8 @@
 | size | 尺寸 | VARCHAR(100) | 尺寸信息，如：戒指12号、手链18cm |
 | origin | 产地 | VARCHAR(100) | 产地信息，如：深圳水贝、香港等 |
 | inlaid_stones | 镶嵌配石 | TEXT | 配石描述，如：主石1ct D/VVS1，配石0.3ct |
-| gemstone_category | 宝石分类 | ENUM | jade（翡翠）/ sapphire（蓝宝），可为空 |
-| function_category | 功能分类 | ENUM | pendant（吊坠）/ necklace（项链）/ bracelet（手镯），可为空 |
+| gemstone_category | 宝石分类 | VARCHAR(100) | 自由文本，支持输入并按历史值模糊自动补全，可为空 |
+| function_category | 功能分类 | VARCHAR(100) | 自由文本，支持输入并按历史值模糊自动补全，可为空 |
 | source_loose_stone_id | 来源裸石 | UUID FK | 关联 loose_stones.id，可为空（由裸石加工生产时填写） |
 | price | 价格(¥) | DECIMAL(12,2) | 销售价格，人民币，必填 |
 | purchase_price | 进货价(¥) | DECIMAL(12,2) | 购入成本，用于计算利润 |
@@ -77,6 +77,8 @@
 | created_at | 创建时间 | TIMESTAMPTZ | 记录创建时间，数据库自动设置 |
 | updated_at | 更新时间 | TIMESTAMPTZ | 最后更新时间，自动维护 |
 | notes | 备注 | TEXT | 额外备注信息，可选填 |
+
+> **产品编号**：页面展示的产品编号为前端依据 `created_at` 生成的派生值，规则为 `P + 年月日时分秒`（如 `P20260624153012`），不单独存储于数据库。
 
 ### 2.2 辅助表：customers（客户表）
 
@@ -108,14 +110,17 @@
 | 字段名 | 中文名 | 类型 | 说明 |
 |--------|--------|------|------|
 | id | 主键 | UUID | 唯一标识 |
+| image_urls | 裸石图片 | TEXT[] | 图片 URL 数组，存储在 Supabase Storage |
+| material | 产品名称 | VARCHAR(100) | 裸石产品名称，如：天然翡翠、矢车菊蓝宝 |
 | size | 尺寸 | VARCHAR(100) | 裸石尺寸，如：10×8mm |
-| material | 材质 | VARCHAR(100) | 材质描述，如：天然翡翠、矢车菊蓝宝 |
 | weight | 克重 | DECIMAL(10,3) | 裸石重量，单位克 |
 | price | 价格 | DECIMAL(12,2) | 裸石价格 |
-| gemstone_category | 宝石分类 | ENUM | jade（翡翠）/ sapphire（蓝宝） |
+| gemstone_category | 宝石分类 | VARCHAR(100) | 自由文本，支持输入并按历史值模糊自动补全 |
 | notes | 备注 | TEXT | 额外备注，可选填 |
 | created_at | 创建时间 | TIMESTAMPTZ | 自动设置 |
 | updated_at | 更新时间 | TIMESTAMPTZ | 自动维护 |
+
+> **裸石编号**：页面展示的裸石编号同样为派生值，规则为 `L + 年月日时分秒`（如 `L20260624153012`）。裸石管理界面与产品管理保持一致：支持卡片/表格视图、图片展示、搜索与筛选。
 
 ### 2.5 SQL 建表语句
 
@@ -132,27 +137,17 @@ CREATE TYPE sale_status_enum AS ENUM (
   'consignment'     -- 借售
 );
 
--- 宝石分类枚举
-CREATE TYPE gemstone_category_enum AS ENUM (
-  'jade',           -- 翡翠
-  'sapphire'        -- 蓝宝
-);
-
--- 功能分类枚举
-CREATE TYPE product_function_enum AS ENUM (
-  'pendant',        -- 吊坠
-  'necklace',       -- 项链
-  'bracelet'        -- 手镯
-);
+-- 宝石分类 / 功能分类已改为自由文本（VARCHAR(100)），不再使用枚举类型
 
 -- 裸石表（products 可由裸石加工生产）
 CREATE TABLE loose_stones (
   id                 UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  image_urls         TEXT[] DEFAULT '{}',
+  material           VARCHAR(100),   -- 产品名称
   size               VARCHAR(100),
-  material           VARCHAR(100),
   weight             DECIMAL(10,3),
   price              DECIMAL(12,2) DEFAULT 0,
-  gemstone_category  gemstone_category_enum,
+  gemstone_category  VARCHAR(100),
   notes              TEXT,
   created_at         TIMESTAMPTZ DEFAULT NOW(),
   updated_at         TIMESTAMPTZ DEFAULT NOW()
@@ -167,8 +162,8 @@ CREATE TABLE products (
   size             VARCHAR(100),
   origin           VARCHAR(100),
   inlaid_stones    TEXT,
-  gemstone_category gemstone_category_enum,
-  function_category product_function_enum,
+  gemstone_category VARCHAR(100),
+  function_category VARCHAR(100),
   source_loose_stone_id UUID REFERENCES loose_stones(id) ON DELETE SET NULL,
   price            DECIMAL(12,2) NOT NULL DEFAULT 0,
   purchase_price   DECIMAL(12,2) DEFAULT 0,
@@ -447,8 +442,8 @@ export interface Product {
   size: string | null
   origin: string | null
   inlaid_stones: string | null
-  gemstone_category: 'jade' | 'sapphire' | null
-  function_category: 'pendant' | 'necklace' | 'bracelet' | null
+  gemstone_category: string | null   // 自由文本，按历史值模糊补全
+  function_category: string | null   // 自由文本，按历史值模糊补全
   source_loose_stone_id: string | null
   price: number
   purchase_price: number
@@ -472,6 +467,19 @@ export interface Customer {
   wechat: string | null
   notes: string | null
   created_at: string
+}
+
+export interface LooseStone {
+  id: string
+  image_urls: string[]
+  material: string | null        // 产品名称
+  size: string | null
+  weight: number | null
+  price: number
+  gemstone_category: string | null   // 自由文本
+  notes: string | null
+  created_at: string
+  updated_at: string
 }
 
 export interface ProductSale {

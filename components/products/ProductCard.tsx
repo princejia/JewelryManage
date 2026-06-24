@@ -2,7 +2,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { Product } from "@/types";
 import { StatusBadge } from "@/components/ui/StatusBadge";
-import { formatCurrency } from "@/lib/utils";
+import { formatCurrency, formatProductCode } from "@/lib/utils";
 
 export function ProductCard({ product }: { product: Product }) {
   return (
@@ -26,6 +26,9 @@ export function ProductCard({ product }: { product: Product }) {
         </div>
         {/* 产品信息 */}
         <div className="p-4">
+          <p className="mb-1 font-mono text-[11px] text-gray-400">
+            {formatProductCode("P", product.created_at)}
+          </p>
           <div className="flex items-start justify-between gap-2">
             <h3 className="line-clamp-2 text-sm font-medium text-gray-900">
               {product.name}
