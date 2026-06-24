@@ -47,7 +47,7 @@ export function LooseStoneTable({
             stones.map((s) => (
               <TableRow key={s.id} className="cursor-pointer">
                 <TableCell className="font-mono text-xs text-gray-500">
-                  {formatProductCode("L", s.created_at)}
+                  {s.code ?? formatProductCode("L", s.created_at)}
                 </TableCell>
                 <TableCell>
                   <button

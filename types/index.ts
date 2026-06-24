@@ -7,6 +7,7 @@ export type ProductFunction = string;
 
 export interface Product {
   id: string;
+  code: string | null;
   image_urls: string[];
   name: string;
   total_weight: number | null;
@@ -42,6 +43,7 @@ export interface Customer {
 
 export interface LooseStone {
   id: string;
+  code: string | null;
   image_urls: string[];
   size: string | null;
   material: string | null;

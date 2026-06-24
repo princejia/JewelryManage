@@ -23,7 +23,10 @@ export async function GET(req: NextRequest) {
   let query = supabase.from("products").select("*", { count: "exact" });
 
   if (status) query = query.eq("sale_status", status);
-  if (search) query = query.ilike("name", `%${search}%`);
+  if (search) {
+    const safe = search.replace(/[,()*]/g, "");
+    query = query.or(`name.ilike.%${safe}%,code.ilike.%${safe}%`);
+  }
   if (is_loose_stone !== null)
     query = query.eq("is_loose_stone", is_loose_stone === "true");
   if (origin) query = query.eq("origin", origin);

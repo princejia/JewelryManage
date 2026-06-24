@@ -46,6 +46,7 @@ END$$;
 -- ------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS loose_stones (
   id                 UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  code               VARCHAR(20),
   image_urls         TEXT[] DEFAULT '{}',
   size               VARCHAR(100),
   material           VARCHAR(100),
@@ -62,6 +63,7 @@ CREATE TABLE IF NOT EXISTS loose_stones (
 -- ------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS products (
   id               UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  code             VARCHAR(20),
   image_urls       TEXT[] DEFAULT '{}',
   name             VARCHAR(255) NOT NULL,
   total_weight     DECIMAL(10,3),
@@ -103,6 +105,10 @@ ALTER TABLE loose_stones  ALTER COLUMN gemstone_category TYPE VARCHAR(100) USING
 
 -- 裸石追加图片字段（幂等）
 ALTER TABLE loose_stones ADD COLUMN IF NOT EXISTS image_urls TEXT[] DEFAULT '{}';
+
+-- 产品 / 裸石编号字段（幂等）
+ALTER TABLE products     ADD COLUMN IF NOT EXISTS code VARCHAR(20);
+ALTER TABLE loose_stones ADD COLUMN IF NOT EXISTS code VARCHAR(20);
 
 -- 已有数据库补建裸石外键（幂等）
 DO $$
@@ -164,6 +170,37 @@ CREATE TRIGGER loose_stones_updated_at
   FOR EACH ROW EXECUTE FUNCTION update_updated_at();
 
 -- ------------------------------------------------------------
+-- 自动生成编号触发器（前缀 + 北京时间年月日时分秒）
+-- 产品以 P 开头，裸石以 L 开头
+-- ------------------------------------------------------------
+CREATE OR REPLACE FUNCTION set_record_code()
+RETURNS TRIGGER AS $$
+BEGIN
+  IF NEW.code IS NULL OR NEW.code = '' THEN
+    NEW.code := TG_ARGV[0] || to_char(
+      COALESCE(NEW.created_at, NOW()) AT TIME ZONE 'Asia/Shanghai',
+      'YYYYMMDDHH24MISS'
+    );
+  END IF;
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS products_set_code ON products;
+CREATE TRIGGER products_set_code
+  BEFORE INSERT ON products
+  FOR EACH ROW EXECUTE FUNCTION set_record_code('P');
+
+DROP TRIGGER IF EXISTS loose_stones_set_code ON loose_stones;
+CREATE TRIGGER loose_stones_set_code
+  BEFORE INSERT ON loose_stones
+  FOR EACH ROW EXECUTE FUNCTION set_record_code('L');
+
+-- 回填已有数据的编号（幂等）
+UPDATE products     SET code = 'P' || to_char(created_at AT TIME ZONE 'Asia/Shanghai', 'YYYYMMDDHH24MISS') WHERE code IS NULL OR code = '';
+UPDATE loose_stones SET code = 'L' || to_char(created_at AT TIME ZONE 'Asia/Shanghai', 'YYYYMMDDHH24MISS') WHERE code IS NULL OR code = '';
+
+-- ------------------------------------------------------------
 -- 常用索引
 -- ------------------------------------------------------------
 CREATE INDEX IF NOT EXISTS idx_products_sale_status ON products(sale_status);
@@ -171,6 +208,8 @@ CREATE INDEX IF NOT EXISTS idx_products_purchased_at ON products(purchased_at);
 CREATE INDEX IF NOT EXISTS idx_products_created_at ON products(created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_products_name ON products USING gin(to_tsvector('simple', name));
 CREATE INDEX IF NOT EXISTS idx_products_source_loose_stone ON products(source_loose_stone_id);
+CREATE INDEX IF NOT EXISTS idx_products_code ON products(code);
+CREATE INDEX IF NOT EXISTS idx_loose_stones_code ON loose_stones(code);
 
 -- ============================================================
 -- 行级安全策略 (RLS)

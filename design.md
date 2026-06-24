@@ -55,6 +55,7 @@
 | 字段名（英文） | 字段名（中文） | 数据类型 | 说明 |
 |---------------|---------------|----------|------|
 | id | 主键 | UUID | 自动生成，唯一标识每件产品 |
+| code | 产品编号 | VARCHAR(20) | 入库时自动生成并存储，规则 `P + 北京时间年月日时分秒`（如 `P20260624153012`），便于查询 |
 | image_urls | 产品图片 | TEXT[] | 图片 URL 数组，存储在 Supabase Storage |
 | name | 产品名称 | VARCHAR(255) | 产品完整名称，如：18K金钻石戒指 |
 | total_weight | 总重量(g) | DECIMAL(10,3) | 产品总重量，单位克，精度至小数点后3位 |
@@ -78,7 +79,7 @@
 | updated_at | 更新时间 | TIMESTAMPTZ | 最后更新时间，自动维护 |
 | notes | 备注 | TEXT | 额外备注信息，可选填 |
 
-> **产品编号**：页面展示的产品编号为前端依据 `created_at` 生成的派生值，规则为 `P + 年月日时分秒`（如 `P20260624153012`），不单独存储于数据库。
+> **产品编号**：`code` 字段在入库时由数据库触发器自动生成并持久化，规则为 `P + 北京时间年月日时分秒`（如 `P20260624153012`），可直接用于搜索与查询。
 
 ### 2.2 辅助表：customers（客户表）
 
@@ -110,6 +111,7 @@
 | 字段名 | 中文名 | 类型 | 说明 |
 |--------|--------|------|------|
 | id | 主键 | UUID | 唯一标识 |
+| code | 裸石编号 | VARCHAR(20) | 入库时自动生成并存储，规则 `L + 北京时间年月日时分秒`（如 `L20260624153012`） |
 | image_urls | 裸石图片 | TEXT[] | 图片 URL 数组，存储在 Supabase Storage |
 | material | 产品名称 | VARCHAR(100) | 裸石产品名称，如：天然翡翠、矢车菊蓝宝 |
 | size | 尺寸 | VARCHAR(100) | 裸石尺寸，如：10×8mm |
@@ -120,7 +122,7 @@
 | created_at | 创建时间 | TIMESTAMPTZ | 自动设置 |
 | updated_at | 更新时间 | TIMESTAMPTZ | 自动维护 |
 
-> **裸石编号**：页面展示的裸石编号同样为派生值，规则为 `L + 年月日时分秒`（如 `L20260624153012`）。裸石管理界面与产品管理保持一致：支持卡片/表格视图、图片展示、搜索与筛选。
+> **裸石编号**：`code` 字段同样在入库时自动生成并持久化，规则为 `L + 北京时间年月日时分秒`（如 `L20260624153012`）。裸石管理界面与产品管理保持一致：支持卡片/表格视图、图片展示、搜索与筛选。
 
 ### 2.5 SQL 建表语句
 
@@ -142,6 +144,7 @@ CREATE TYPE sale_status_enum AS ENUM (
 -- 裸石表（products 可由裸石加工生产）
 CREATE TABLE loose_stones (
   id                 UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  code               VARCHAR(20),    -- 裸石编号，自动生成
   image_urls         TEXT[] DEFAULT '{}',
   material           VARCHAR(100),   -- 产品名称
   size               VARCHAR(100),
@@ -156,6 +159,7 @@ CREATE TABLE loose_stones (
 -- 产品主表
 CREATE TABLE products (
   id               UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  code             VARCHAR(20),    -- 产品编号，自动生成
   image_urls       TEXT[] DEFAULT '{}',
   name             VARCHAR(255) NOT NULL,
   total_weight     DECIMAL(10,3),
@@ -216,11 +220,35 @@ CREATE TRIGGER products_updated_at
   BEFORE UPDATE ON products
   FOR EACH ROW EXECUTE FUNCTION update_updated_at();
 
+-- 编号自动生成（前缀 + 北京时间年月日时分秒）
+CREATE OR REPLACE FUNCTION set_record_code()
+RETURNS TRIGGER AS $$
+BEGIN
+  IF NEW.code IS NULL OR NEW.code = '' THEN
+    NEW.code := TG_ARGV[0] || to_char(
+      COALESCE(NEW.created_at, NOW()) AT TIME ZONE 'Asia/Shanghai',
+      'YYYYMMDDHH24MISS'
+    );
+  END IF;
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER products_set_code
+  BEFORE INSERT ON products
+  FOR EACH ROW EXECUTE FUNCTION set_record_code('P');
+
+CREATE TRIGGER loose_stones_set_code
+  BEFORE INSERT ON loose_stones
+  FOR EACH ROW EXECUTE FUNCTION set_record_code('L');
+
 -- 常用索引
 CREATE INDEX idx_products_sale_status ON products(sale_status);
 CREATE INDEX idx_products_purchased_at ON products(purchased_at);
 CREATE INDEX idx_products_created_at ON products(created_at DESC);
 CREATE INDEX idx_products_name ON products USING gin(to_tsvector('simple', name));
+CREATE INDEX idx_products_code ON products(code);
+CREATE INDEX idx_loose_stones_code ON loose_stones(code);
 ```
 
 ---
@@ -436,6 +464,7 @@ export type SaleStatus = 'in_stock' | 'sold' | 'consignment'
 
 export interface Product {
   id: string
+  code: string | null
   image_urls: string[]
   name: string
   total_weight: number | null
@@ -471,6 +500,7 @@ export interface Customer {
 
 export interface LooseStone {
   id: string
+  code: string | null
   image_urls: string[]
   material: string | null        // 产品名称
   size: string | null

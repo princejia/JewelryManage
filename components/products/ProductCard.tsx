@@ -27,7 +27,7 @@ export function ProductCard({ product }: { product: Product }) {
         {/* 产品信息 */}
         <div className="p-4">
           <p className="mb-1 font-mono text-[11px] text-gray-400">
-            {formatProductCode("P", product.created_at)}
+            {product.code ?? formatProductCode("P", product.created_at)}
           </p>
           <div className="flex items-start justify-between gap-2">
             <h3 className="line-clamp-2 text-sm font-medium text-gray-900">

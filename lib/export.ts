@@ -12,7 +12,7 @@ const STATUS_LABEL: Record<string, string> = {
 /** 将产品列表导出为 Excel 文件并触发下载 */
 export function exportProductsToExcel(products: Product[], filename?: string) {
   const rows = products.map((p) => ({
-    编号: formatProductCode("P", p.created_at),
+    编号: p.code ?? formatProductCode("P", p.created_at),
     产品名称: p.name,
     销售状态: STATUS_LABEL[p.sale_status] ?? p.sale_status,
     "价格(¥)": Number(p.price),

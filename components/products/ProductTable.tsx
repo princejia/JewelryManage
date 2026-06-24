@@ -38,7 +38,7 @@ export function ProductTable({ products }: { products: Product[] }) {
             products.map((p) => (
               <TableRow key={p.id} className="cursor-pointer">
                 <TableCell className="font-mono text-xs text-gray-500">
-                  {formatProductCode("P", p.created_at)}
+                  {p.code ?? formatProductCode("P", p.created_at)}
                 </TableCell>
                 <TableCell>
                   <Link

@@ -38,7 +38,7 @@ export default async function ProductDetailPage({
         <div>
           <h1 className="text-2xl font-bold text-gray-900">编辑产品</h1>
           <p className="mt-1 font-mono text-sm text-gray-400">
-            编号：{formatProductCode("P", product.created_at)}
+            编号：{product.code ?? formatProductCode("P", product.created_at)}
           </p>
         </div>
         <DeleteProductButton id={product.id} />

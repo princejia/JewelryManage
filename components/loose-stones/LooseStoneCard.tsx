@@ -37,7 +37,7 @@ export function LooseStoneCard({
         {/* 裸石信息 */}
         <div className="p-4">
           <p className="mb-1 font-mono text-[11px] text-gray-400">
-            {formatProductCode("L", stone.created_at)}
+            {stone.code ?? formatProductCode("L", stone.created_at)}
           </p>
           <h3 className="line-clamp-2 text-sm font-medium text-gray-900">
             {stone.material || "未命名"}

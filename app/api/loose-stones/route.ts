@@ -18,7 +18,10 @@ export async function GET(req: NextRequest) {
   let query = supabase.from("loose_stones").select("*");
 
   if (gemstone) query = query.ilike("gemstone_category", `%${gemstone}%`);
-  if (search) query = query.ilike("material", `%${search}%`);
+  if (search) {
+    const safe = search.replace(/[,()*]/g, "");
+    query = query.or(`material.ilike.%${safe}%,code.ilike.%${safe}%`);
+  }
   if (price_min) query = query.gte("price", Number(price_min));
   if (price_max) query = query.lte("price", Number(price_max));
 
