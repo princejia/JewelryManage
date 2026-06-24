@@ -28,14 +28,11 @@ async function ensureBucket(
 
 export async function POST(req: NextRequest) {
   // 环境变量校验，便于线上排查
-  if (
-    !process.env.NEXT_PUBLIC_SUPABASE_URL ||
-    !process.env.SUPABASE_SERVICE_ROLE_KEY
-  ) {
+  if (!process.env.SUPABASE_SERVICE_ROLE_KEY) {
     return NextResponse.json(
       {
         error:
-          "服务端未配置 Supabase 环境变量（NEXT_PUBLIC_SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY）",
+          "服务端未配置 Supabase 密钥（SUPABASE_SERVICE_ROLE_KEY），请在部署平台环境变量中设置",
       },
       { status: 500 }
     );
