@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabase-server";
 import { looseStoneSchema } from "@/lib/validations";
 
+export const runtime = "edge";
+
 export async function GET(
   _: NextRequest,
   { params }: { params: { id: string } }

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabase-server";
 
+export const runtime = "edge";
 export const dynamic = "force-dynamic";
 
 /** 返回各分类字段已有的去重取值，用于表单自动补全建议 */
