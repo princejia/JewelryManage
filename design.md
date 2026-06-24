@@ -1,9 +1,9 @@
 # 珠宝黄金销售管理系统
 ## Jewelry & Gold Sales Management System — 技术设计文档 v1.0
 
-**技术栈：** Next.js 14 + Supabase + Vercel  
+**技术栈：** Next.js 14 (Edge Runtime) + Supabase + Cloudflare Pages  
 **数据库：** PostgreSQL (Supabase)  
-**部署平台：** Vercel（免费套餐）  
+**部署平台：** Cloudflare Pages（免费套餐，@cloudflare/next-on-pages 适配）  
 **预计月成本：** ¥0
 
 ---
@@ -38,13 +38,13 @@
 
 | 层级 | 技术选型 | 选型理由 |
 |------|----------|----------|
-| 前端框架 | Next.js 14 (App Router) | 内置 SSR/SSG，SEO 友好，Vercel 原生支持，免费部署 |
+| 前端框架 | Next.js 14 (App Router) | 内置 SSR/SSG，SEO 友好，免费部署 |
 | UI 组件库 | shadcn/ui + Tailwind CSS | 无头组件，样式灵活，无额外费用 |
-| 后端 API | Next.js API Routes | Serverless 函数，与前端同仓库，零运维成本 |
+| 后端 API | Next.js API Routes (Edge Runtime) | Serverless / Edge 函数，与前端同仓库，零运维成本 |
 | 数据库 | PostgreSQL (Supabase) | 免费 500MB，自带管理界面、认证、实时订阅 |
 | 文件存储 | Supabase Storage | 免费 1GB，用于存储产品图片 |
 | 认证鉴权 | Supabase Auth | 内置用户管理，支持邮箱登录，免费 |
-| 部署托管 | Vercel | 个人项目免费，自动 CI/CD，全球 CDN |
+| 部署托管 | Cloudflare Pages | 个人项目免费，自动 CI/CD，全球边缘网络（@cloudflare/next-on-pages 适配） |
 
 ---
 
@@ -260,9 +260,9 @@ CREATE INDEX idx_loose_stones_code ON loose_stones(code);
 ```
 【用户浏览器】
       ↕ HTTPS
-【Vercel CDN / Edge Network】
+【Cloudflare Pages / 边缘网络（Edge Runtime）】
   ├── Next.js 前端页面 (React / SSR / SSG)
-  └── Next.js API Routes (Serverless Functions)
+  └── Next.js API Routes (Edge Functions)
       ↕ Supabase SDK / REST API
 【Supabase 云服务】
   ├── PostgreSQL 数据库（产品、客户、销售数据）
@@ -817,6 +817,12 @@ npm install recharts
 
 # 安装表单验证
 npm install zod react-hook-form @hookform/resolvers
+
+# 安装 Excel 导出（exceljs 支持图片嵌入，xlsx 用于报表）
+npm install exceljs xlsx
+
+# 安装 Cloudflare Pages 适配（部署用）
+npm install -D @cloudflare/next-on-pages wrangler vercel
 ```
 
 ### 步骤三：配置环境变量
@@ -830,7 +836,7 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=your_anon_key_here
 SUPABASE_SERVICE_ROLE_KEY=your_service_role_key_here
 ```
 
-### 步骤四：部署到 Vercel
+### 步骤四：部署到 Cloudflare Pages
 
 ```bash
 # 推送代码到 GitHub
@@ -841,11 +847,18 @@ git remote add origin https://github.com/your-name/jewelry-system.git
 git push -u origin main
 ```
 
-1. 访问 https://vercel.com，用 GitHub 账号登录
-2. 点击 **New Project**，导入 GitHub 仓库
-3. 在 **Environment Variables** 中添加 `.env.local` 中的三个变量
-4. 点击 **Deploy**，约 2 分钟完成部署
-5. 后续每次 `git push` 自动触发重新部署
+> Cloudflare Pages 运行在 Edge Runtime（Workers），因此所有动态页面与 API Route 均需 `export const runtime = "edge"`，并通过 `@cloudflare/next-on-pages` 适配构建；`next.config.mjs` 中需设置 `images.unoptimized = true`。
+
+1. 访问 https://dash.cloudflare.com → **Workers & Pages → Create → Pages → 连接 Git**，选择本仓库
+2. 构建配置：
+   - **Build command：** `npx @cloudflare/next-on-pages@1`
+   - **Build output directory：** `.vercel/output/static`
+3. **Settings → Functions → Compatibility flags** 添加 `nodejs_compat`（Production 与 Preview 均需添加），Compatibility date 设为 `2024-09-23` 或更新（仓库根目录的 `wrangler.toml` 已预置）
+4. 在 **Settings → Environment variables** 中添加 `.env.local` 中的三个变量
+5. 部署完成后，在 Supabase → Authentication → URL Configuration 将 Cloudflare 域名加入允许列表
+6. 后续每次 `git push` 自动触发重新部署
+
+> **关于国内访问：** Cloudflare 默认的 `*.pages.dev` 域名在中国大陆常被屏蔽 / 限速。如需稳定的国内访问，建议绑定自定义域名并配合备案域名 + 国内线路；Supabase 服务器位于海外，数据库延迟亦会影响访问体验。
 
 ### 成本估算
 
@@ -854,7 +867,7 @@ git push -u origin main
 | Supabase DB | 500MB 存储 | $0 | $25/月（Pro）|
 | Supabase Storage | 1GB 图片存储 | $0 | $0.021/GB |
 | Supabase Auth | 50,000 MAU | $0 | 含在 Pro 套餐 |
-| Vercel 部署 | 100GB 带宽 | $0 | $20/月（Pro）|
+| Cloudflare Pages 部署 | 无限带宽 / 10 万次请求/天 | $0 | $5/月（更多请求） |
 | **合计（小型珠宝店）** | 通常足够 | **¥0/月** | 数据量大时约 $45/月 |
 
 ---
