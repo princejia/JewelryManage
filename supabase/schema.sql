@@ -315,11 +315,11 @@ CREATE POLICY "Authenticated users can manage loose stones"
 DROP POLICY IF EXISTS "Authenticated users can manage returns" ON product_returns;
 CREATE POLICY "Authenticated users can manage returns"
   ON product_returns FOR ALL
+  TO authenticated USING (true) WITH CHECK (true);
 
 DROP POLICY IF EXISTS "Authenticated users can manage loans" ON item_loans;
 CREATE POLICY "Authenticated users can manage loans"
   ON item_loans FOR ALL
-  TO authenticated USING (true) WITH CHECK (true);
   TO authenticated USING (true) WITH CHECK (true);
 
 -- ============================================================

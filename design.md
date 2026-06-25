@@ -1,5 +1,5 @@
 # 珠宝黄金销售管理系统
-## Jewelry & Gold Sales Management System — 技术设计文档 v1.1
+## Jewelry & Gold Sales Management System — 技术设计文档 v1.2
 
 **技术栈：** Next.js 14 (App Router) + Supabase + Vercel  
 **数据库：** PostgreSQL (Supabase)  
@@ -30,7 +30,8 @@
 
 - 追踪每件产品的完整生命周期（从购入到出售）
 - 实时掌握销售状态（已结款、未结款、借售）
-- 管理裸石与镶嵌成品的区分
+- 管理裸石与镶嵌成品的区分，并可标记裸石是否已用于产品
+- 产品与裸石均可出售、借调，并追踪认证报告（文档 / 图片）
 - 统计利润、汇总财务数据
 - 支持产品图片展示，便于识别和管理
 
@@ -58,16 +59,19 @@
 | code | 产品编号 | VARCHAR(20) | 入库时自动生成并存储，规则 `P + 北京时间年月日时分秒`（如 `P20260624153012`），便于查询 |
 | image_urls | 产品图片 | TEXT[] | 图片 URL 数组，存储在 Supabase Storage |
 | name | 产品名称 | VARCHAR(255) | 产品完整名称，如：18K金钻石戒指 |
-| total_weight | 总重量(g) | DECIMAL(10,3) | 产品总重量，单位克，精度至小数点后3位 |
+| total_weight | 重量 | DECIMAL(10,3) | 产品重量，精度至小数点后3位，单位由 weight_unit 决定 |
+| weight_unit | 重量单位 | VARCHAR(20) | 可输入单位，默认“克(g)”，可选“克拉(ct)”或自定义 |
 | size | 尺寸 | VARCHAR(100) | 尺寸信息，如：戒指12号、手链18cm |
 | origin | 产地 | VARCHAR(100) | 产地信息，如：深圳水贝、香港等 |
 | inlaid_stones | 镶嵌配石 | TEXT | 配石描述，如：主石1ct D/VVS1，配石0.3ct |
+| certificate_urls | 认证报告 | TEXT[] | 认证报告文件 URL 数组，支持图片与文档（PDF/Word），存储在 Supabase Storage |
 | gemstone_category | 宝石分类 | VARCHAR(100) | 自由文本，支持输入并按历史值模糊自动补全，可为空 |
 | function_category | 功能分类 | VARCHAR(100) | 自由文本，支持输入并按历史值模糊自动补全，可为空 |
 | source_loose_stone_id | 来源裸石 | UUID FK | 关联 loose_stones.id，可为空（由裸石加工生产时填写） |
-| price | 价格(¥) | DECIMAL(12,2) | 销售价格，人民币，必填 |
+| price | 价格(¥) | DECIMAL(12,2) | 销售报价，人民币，必填 |
 | purchase_price | 进货价(¥) | DECIMAL(12,2) | 购入成本，用于计算利润 |
-| sale_status | 销售情况 | ENUM | in_stock（在库）/ sold（已售）/ consignment（借售）|
+| sale_price | 出售价(¥) | DECIMAL(12,2) | 真实成交出售价格，销售时回写 |
+| sale_status | 销售情况 | ENUM | in_stock（在库）/ sold（已售）/ consignment（借售），在【销售管理】中变更 |
 | settled_amount | 结款(¥) | DECIMAL(12,2) | 已收款金额 |
 | unsettled_amount | 未结款(¥) | DECIMAL(12,2) | **自动计算** = price - settled_amount |
 | is_consignment | 借售 | BOOLEAN | 是否为借售/寄售模式 |
@@ -97,12 +101,15 @@
 | 字段名 | 中文名 | 类型 | 说明 |
 |--------|--------|------|------|
 | id | 主键 | UUID | 唯一标识 |
-| product_id | 产品ID | UUID FK | 关联 products.id |
+| product_id | 产品ID | UUID FK | 关联 products.id，可为空（出售裸石时为空） |
+| loose_stone_id | 裸石ID | UUID FK | 关联 loose_stones.id，可为空（出售产品时为空） |
 | customer_id | 客户ID | UUID FK | 关联 customers.id，可为空 |
 | sale_price | 成交价格 | DECIMAL(12,2) | 实际成交金额 |
 | payment_method | 付款方式 | VARCHAR(50) | 现金/微信/支付宝/银行转账 |
 | sold_at | 成交时间 | DATE | 实际售出日期 |
 | created_at | 记录时间 | TIMESTAMPTZ | 自动设置 |
+
+> 销售记录同时支持**产品**与**裸石**：`product_id` 与 `loose_stone_id` 二者填其一。出售方式支持【出售】与【借售】，提交后自动回写对应物品的销售状态与出售价。
 
 ### 2.4 辅助表：loose_stones（裸石表）
 
@@ -115,20 +122,23 @@
 | image_urls | 裸石图片 | TEXT[] | 图片 URL 数组，存储在 Supabase Storage |
 | material | 产品名称 | VARCHAR(100) | 裸石产品名称，如：天然翡翠、矢车菊蓝宝 |
 | size | 尺寸 | VARCHAR(100) | 裸石尺寸，如：10×8mm |
-| weight | 克重 | DECIMAL(10,3) | 裸石重量，单位克 |
+| weight | 重量 | DECIMAL(10,3) | 裸石重量，单位由 weight_unit 决定 |
+| weight_unit | 重量单位 | VARCHAR(20) | 可输入单位，默认“克(g)”，可选“克拉(ct)”或自定义 |
 | price | 价格 | DECIMAL(12,2) | 裸石价格 |
 | gemstone_category | 宝石分类 | VARCHAR(100) | 自由文本，支持输入并按历史值模糊自动补全 |
 | origin | 产地 | VARCHAR(100) | 裸石产地 |
 | certificate | 证书 | VARCHAR(255) | 证书编号或描述 |
+| certificate_urls | 认证报告 | TEXT[] | 认证报告文件 URL 数组，支持图片与文档（PDF/Word） |
+| sale_status | 销售情况 | ENUM | in_stock（在库）/ sold（已售）/ consignment（借售），在【销售管理】中变更 |
 | purchase_price | 进货价(¥) | DECIMAL(12,2) | 购入成本 |
-| sale_price | 售出价(¥) | DECIMAL(12,2) | 售出价格 |
+| sale_price | 售出价(¥) | DECIMAL(12,2) | 售出价格，销售时回写 |
 | purchased_at | 购入时间 | DATE | 裸石购入日期 |
 | sold_at | 卖出时间 | DATE | 裸石卖出日期，未售出时为 NULL |
 | notes | 备注 | TEXT | 额外备注，可选填 |
 | created_at | 创建时间 | TIMESTAMPTZ | 自动设置 |
 | updated_at | 更新时间 | TIMESTAMPTZ | 自动维护 |
 
-> **裸石编号**：`code` 字段同样在入库时自动生成并持久化，规则为 `L + 北京时间年月日时分秒`（如 `L20260624153012`）。裸石管理界面与产品管理保持一致：支持卡片/表格视图、图片展示、搜索与筛选、增删改（删除带二次确认）、导出 Excel（首张图片嵌入第一列）。
+> **裸石状态展示**：裸石列表/卡片/表格会根据数据派生状态显示徽标——销售状态（已售/借售）、**已用于产品**（被某件产品通过 `source_loose_stone_id` 引用时）、**借调中**（存在未归还的借调记录时）。
 
 ### 2.5 关联表：product_returns（退货记录表）
 
@@ -145,7 +155,24 @@
 | returned_at | 退货时间 | DATE | 退货日期 |
 | created_at | 记录时间 | TIMESTAMPTZ | 自动设置 |
 
-### 2.6 SQL 建表语句
+### 2.6 关联表：item_loans（借调记录表）
+
+产品与裸石均可借调。登记借出后，对应产品/裸石在列表中显示【借调中】状态；登记归还后状态恢复。
+
+| 字段名 | 中文名 | 类型 | 说明 |
+|--------|--------|------|------|
+| id | 主键 | UUID | 唯一标识 |
+| product_id | 产品ID | UUID FK | 关联 products.id，可为空 |
+| loose_stone_id | 裸石ID | UUID FK | 关联 loose_stones.id，可为空（与 product_id 二选一） |
+| borrower_name | 借出人 | VARCHAR(100) | 必填 |
+| borrower_contact | 联系方式 | VARCHAR(100) | 可选填 |
+| loaned_at | 借出日期 | DATE | 默认当天 |
+| due_at | 预计归还 | DATE | 可选填 |
+| returned_at | 归还日期 | DATE | 为空表示借出中，填写后表示已归还 |
+| notes | 备注 | TEXT | 可选填 |
+| created_at | 记录时间 | TIMESTAMPTZ | 自动设置 |
+
+### 2.7 SQL 建表语句
 
 在 Supabase SQL Editor 中执行：
 
@@ -174,6 +201,9 @@ CREATE TABLE loose_stones (
   gemstone_category  VARCHAR(100),
   origin             VARCHAR(100),   -- 产地
   certificate        VARCHAR(255),   -- 证书
+  certificate_urls   TEXT[] DEFAULT '{}',      -- 认证报告（图片/文档）
+  weight_unit        VARCHAR(20) DEFAULT '克(g)',  -- 重量单位
+  sale_status        sale_status_enum DEFAULT 'in_stock',  -- 销售状态
   purchase_price     DECIMAL(12,2) DEFAULT 0,  -- 进货价
   sale_price         DECIMAL(12,2) DEFAULT 0,  -- 售出价
   purchased_at       DATE,           -- 购入时间
@@ -190,14 +220,17 @@ CREATE TABLE products (
   image_urls       TEXT[] DEFAULT '{}',
   name             VARCHAR(255) NOT NULL,
   total_weight     DECIMAL(10,3),
+  weight_unit      VARCHAR(20) DEFAULT '克(g)',   -- 重量单位
   size             VARCHAR(100),
   origin           VARCHAR(100),
   inlaid_stones    TEXT,
+  certificate_urls TEXT[] DEFAULT '{}',          -- 认证报告（图片/文档）
   gemstone_category VARCHAR(100),
   function_category VARCHAR(100),
   source_loose_stone_id UUID REFERENCES loose_stones(id) ON DELETE SET NULL,
   price            DECIMAL(12,2) NOT NULL DEFAULT 0,
   purchase_price   DECIMAL(12,2) DEFAULT 0,
+  sale_price       DECIMAL(12,2) DEFAULT 0,       -- 出售价
   sale_status      sale_status_enum DEFAULT 'in_stock',
   settled_amount   DECIMAL(12,2) DEFAULT 0,
   -- 未结款：自动计算字段
@@ -223,10 +256,11 @@ CREATE TABLE customers (
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- 销售记录表
+-- 销售记录表（product_id 与 loose_stone_id 二选一）
 CREATE TABLE product_sales (
   id             UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   product_id     UUID REFERENCES products(id) ON DELETE CASCADE,
+  loose_stone_id UUID REFERENCES loose_stones(id) ON DELETE CASCADE,
   customer_id    UUID REFERENCES customers(id) ON DELETE SET NULL,
   sale_price     DECIMAL(12,2) NOT NULL,
   payment_method VARCHAR(50),
@@ -246,7 +280,19 @@ CREATE TABLE product_returns (
   created_at     TIMESTAMPTZ DEFAULT NOW()
 );
 
--- 自动更新 updated_at 触发器
+-- 借调记录表（产品与裸石均可借调）
+CREATE TABLE item_loans (
+  id               UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  product_id       UUID REFERENCES products(id) ON DELETE CASCADE,
+  loose_stone_id   UUID REFERENCES loose_stones(id) ON DELETE CASCADE,
+  borrower_name    VARCHAR(100) NOT NULL,
+  borrower_contact VARCHAR(100),
+  loaned_at        DATE NOT NULL DEFAULT CURRENT_DATE,
+  due_at           DATE,
+  returned_at      DATE,
+  notes            TEXT,
+  created_at       TIMESTAMPTZ DEFAULT NOW()
+);
 CREATE OR REPLACE FUNCTION update_updated_at()
 RETURNS TRIGGER AS $$
 BEGIN
@@ -291,6 +337,10 @@ CREATE INDEX idx_loose_stones_code ON loose_stones(code);
 CREATE INDEX idx_returns_sale ON product_returns(sale_id);
 CREATE INDEX idx_returns_product ON product_returns(product_id);
 CREATE INDEX idx_returns_returned_at ON product_returns(returned_at);
+CREATE INDEX idx_product_sales_loose_stone ON product_sales(loose_stone_id);
+CREATE INDEX idx_item_loans_product ON item_loans(product_id);
+CREATE INDEX idx_item_loans_loose_stone ON item_loans(loose_stone_id);
+CREATE INDEX idx_item_loans_returned ON item_loans(returned_at);
 ```
 
 ---
@@ -412,27 +462,40 @@ jewelry-system/
 #### 产品新增/编辑页 `/products/new` 和 `/products/[id]`
 
 - 多图上传（拖拽或点击），上传至 Supabase Storage
+- **认证报告**上传：支持图片与文档（PDF/Word），图片显示缩略图、文档显示文件卡片，可点击查看
 - 所有字段均有对应表单控件（详见第六章）
-- 销售状态流转：在库 → 已售/借售，状态变更时自动填入出售时间
+- **重量 + 可输入单位**：重量数字框旁配单位输入（默认「克(g)」，可选「克拉(ct)」或自定义）
+- **出售价**字段：记录真实成交出售价格
+- 销售状态不在编辑页操作，统一在【销售管理】中变更
 - 利润实时预览：填写进货价和售价后立即显示利润
 - 未结款实时计算：售价 - 已结款 = 未结款（红色高亮提示）
+- 数字输入框修复：当值为 0 时可正常按 Backspace 删除（NumberInput 组件保留字符串态）
 - 删除产品/裸石均需二次确认，防止误删
 
 ### 4.3 销售记录模块 `/sales`
 
-- 按时间范围查看销售流水
-- 每条记录显示：产品信息、客户、成交价、付款方式、成交时间
+- 产品与裸石均可出售：登记销售时选择物品类型（产品/裸石）与出售方式（出售/借售）
+- 销售状态统一在【销售管理】中操作，不再在产品/裸石的编辑页变更；提交后自动回写对应物品的销售状态、出售价与出售时间
+- 按时间范围查看销售流水，每条记录显示：物品信息、类型（产品/裸石）、客户、成交价、付款方式、成交时间
 - 付款状态跟踪：支持记录部分付款
 - **退货管理**：在销售页登记退货（关联某笔销售，自动带出产品/客户/退款金额），可编辑、可删除；登记后产品自动恢复为【在库】
 - 时间段汇总：总销售额（已扣除退款）、总利润、平均客单价
 
-### 4.4 客户管理模块 `/customers`
+### 4.4 借调管理模块 `/loans`
+
+- 产品与裸石均可借调：登记借出时选择物品类型与具体物品（自动过滤已出售、已借调中的物品）
+- 必填借出人，可填联系方式、借出日期、预计归还日期、备注
+- 统计卡片：借调总数 / 借出中 / 已归还
+- 列表支持【归还】（标记 returned_at）与【删除】（带二次确认）
+- 若某产品/裸石存在未归还记录，会在其列表/卡片/表格中显示【借调中】徽标
+
+### 4.5 客户管理模块 `/customers`
 
 - 客户档案：姓名、电话、微信、备注，支持新增/编辑/删除（删除带二次确认）
 - 购买历史：点击客户查看其所有购买记录
 - 欠款客户快速筛选
 
-### 4.5 财务报表模块 `/reports`
+### 4.6 财务报表模块 `/reports`
 
 | 报表名称 | 内容说明 |
 |----------|----------|
@@ -455,14 +518,14 @@ jewelry-system/
 | GET | /api/products/[id] | 产品详情 | 获取单个产品完整信息 |
 | PATCH | /api/products/[id] | 更新产品 | 部分更新 |
 | DELETE | /api/products/[id] | 删除产品 | 软删除 |
-| POST | /api/upload | 上传图片 | 上传至 Supabase Storage，返回 URL |
-| GET | /api/sales | 获取销售记录 | 支持时间范围筛选 |
-| POST | /api/sales | 创建销售记录 | 同时更新产品状态 |
+| POST | /api/upload | 上传文件 | 上传图片/认证报告文档至 Supabase Storage，返回 URL |
+| GET | /api/sales | 获取销售记录 | 含产品/裸石关联，支持时间范围筛选 |
+| POST | /api/sales | 创建销售记录 | 物品为产品或裸石，同时更新其销售状态与出售价 |
 | GET | /api/customers | 客户列表 | |
 | POST | /api/customers | 创建客户 | |
 | PATCH | /api/customers/[id] | 更新客户 | 部分更新 |
 | DELETE | /api/customers/[id] | 删除客户 | 前端二次确认 |
-| GET | /api/loose-stones | 裸石列表 | 支持筛选、搜索 |
+| GET | /api/loose-stones | 裸石列表 | 含 is_used / is_loaned 派生状态，支持筛选、搜索 |
 | POST | /api/loose-stones | 创建裸石 | |
 | PATCH | /api/loose-stones/[id] | 更新裸石 | 部分更新 |
 | DELETE | /api/loose-stones/[id] | 删除裸石 | 前端二次确认 |
@@ -470,6 +533,10 @@ jewelry-system/
 | POST | /api/returns | 登记退货 | 同时将产品恢复为【在库】 |
 | PATCH | /api/returns/[id] | 更新退货 | 部分更新 |
 | DELETE | /api/returns/[id] | 删除退货 | |
+| GET | /api/loans | 获取借调记录 | 含产品/裸石关联，支持 active/returned 状态筛选 |
+| POST | /api/loans | 登记借出 | 物品为产品或裸石 |
+| PATCH | /api/loans/[id] | 更新/归还借调 | 填写 returned_at 即标记归还 |
+| DELETE | /api/loans/[id] | 删除借调记录 | |
 
 ### 5.2 查询参数（GET /api/products）
 
@@ -530,19 +597,23 @@ export interface Product {
   image_urls: string[]
   name: string
   total_weight: number | null
+  weight_unit: string | null        // 重量单位，默认“克(g)”
   size: string | null
   origin: string | null
   inlaid_stones: string | null
+  certificate_urls: string[]        // 认证报告（图片/文档）
   gemstone_category: string | null   // 自由文本，按历史值模糊补全
   function_category: string | null   // 自由文本，按历史值模糊补全
   source_loose_stone_id: string | null
   price: number
   purchase_price: number
+  sale_price: number                 // 出售价
   sale_status: SaleStatus
   settled_amount: number
   unsettled_amount: number   // 数据库自动计算
   is_consignment: boolean
   is_loose_stone: boolean
+  is_loaned?: boolean        // 派生：是否借调中
   profit: number             // 数据库自动计算
   purchased_at: string | null
   sold_at: string | null
@@ -567,22 +638,28 @@ export interface LooseStone {
   material: string | null        // 产品名称
   size: string | null
   weight: number | null
+  weight_unit: string | null         // 重量单位，默认“克(g)”
   price: number
   gemstone_category: string | null   // 自由文本
   origin: string | null              // 产地
   certificate: string | null         // 证书
+  certificate_urls: string[]         // 认证报告（图片/文档）
+  sale_status: SaleStatus            // 销售状态
   purchase_price: number             // 进货价
   sale_price: number                 // 售出价
   purchased_at: string | null        // 购入时间
   sold_at: string | null             // 卖出时间
   notes: string | null
+  is_used?: boolean                  // 派生：是否已用于产品
+  is_loaned?: boolean                // 派生：是否借调中
   created_at: string
   updated_at: string
 }
 
 export interface ProductSale {
   id: string
-  product_id: string
+  product_id: string | null
+  loose_stone_id: string | null
   customer_id: string | null
   sale_price: number
   payment_method: string | null
@@ -598,6 +675,19 @@ export interface ProductReturn {
   refund_amount: number
   reason: string | null
   returned_at: string
+  created_at: string
+}
+
+export interface ItemLoan {
+  id: string
+  product_id: string | null
+  loose_stone_id: string | null
+  borrower_name: string
+  borrower_contact: string | null
+  loaned_at: string
+  due_at: string | null
+  returned_at: string | null      // 为空表示借出中
+  notes: string | null
   created_at: string
 }
 ```
@@ -723,13 +813,18 @@ export async function POST(req: NextRequest) {
 
   if (!file) return NextResponse.json({ error: 'No file provided' }, { status: 400 })
 
-  // 限制：只允许图片，最大 5MB
-  const allowedTypes = ['image/jpeg', 'image/png', 'image/webp']
+  // 限制：允许图片与文档（PDF/Word），最大 10MB
+  const allowedTypes = [
+    'image/jpeg', 'image/png', 'image/webp',
+    'application/pdf',
+    'application/msword',
+    'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  ]
   if (!allowedTypes.includes(file.type)) {
-    return NextResponse.json({ error: '只支持 JPG/PNG/WEBP 格式' }, { status: 400 })
+    return NextResponse.json({ error: '只支持图片或 PDF/Word 文档' }, { status: 400 })
   }
-  if (file.size > 5 * 1024 * 1024) {
-    return NextResponse.json({ error: '文件大小不能超过 5MB' }, { status: 400 })
+  if (file.size > 10 * 1024 * 1024) {
+    return NextResponse.json({ error: '文件大小不能超过 10MB' }, { status: 400 })
   }
 
   const supabase = createServerClient()
@@ -762,8 +857,10 @@ export async function POST(req: NextRequest) {
 | / | 仪表盘 | 数据总览、快捷操作、待办事项 |
 | /products | 产品列表 | 多视图浏览、筛选、搜索 |
 | /products/new | 新增产品 | 完整产品录入表单 + 图片上传 |
-| /products/[id] | 产品详情 | 查看/编辑产品，变更销售状态 |
-| /sales | 销售记录 | 销售流水、付款跟踪 |
+| /products/[id] | 产品详情 | 查看/编辑产品 |
+| /loose-stones | 裸石管理 | 裸石多视图浏览、筛选、状态展示 |
+| /sales | 销售记录 | 销售流水、付款跟踪、退货登记 |
+| /loans | 借调管理 | 借出登记、归还、借调状态追踪 |
 | /customers | 客户管理 | 客户档案、购买历史 |
 | /reports | 财务报表 | 多维度统计图表、导出功能 |
 
@@ -772,8 +869,9 @@ export async function POST(req: NextRequest) {
 | 表单字段 | 控件类型 | 交互说明 |
 |----------|----------|----------|
 | 产品图片 | 图片上传组件 | 拖拽/点击上传，多图预览，支持删除、调整顺序、设为首图（首图带「首图」徽章），显示上传进度 |
+| 认证报告 | 文件上传组件 | 支持图片与文档（PDF/Word）；图片显示缩略图、文档显示文件卡片，可点击查看 |
 | 产品名称 | 文本输入 | 必填，最多 255 字符 |
-| 总重量 | 数字输入 | 单位：克，保留 3 位小数 |
+| 重量 | 数字输入 + 单位输入 | 重量保留 3 位小数；单位默认「克(g)」，可选「克拉(ct)」或自定义 |
 | 尺寸 | 文本输入 | 如：戒指12号、手链18cm，可选填 |
 | 产地 | 下拉选择 + 自定义输入 | 预设常用产地，支持手动输入 |
 | 镶嵌配石 | 多行文本域 | 描述主石、配石详情 |
@@ -782,14 +880,14 @@ export async function POST(req: NextRequest) {
 | 从现有裸石生产 | 开关 + 下拉选择 | 勾选后可选择一颗已录入的裸石作为加工来源 |
 | 价格 | 数字输入 | 人民币，前缀 ¥，必填 |
 | 进货价 | 数字输入 | 用于自动计算利润，仅内部可见 |
-| 销售情况 | 单选按钮组 | 在库 / 已售 / 借售；选已售时显示出售时间 |
+| 出售价 | 数字输入 | 真实成交出售价格 |
 | 结款 | 数字输入 | 已收款额，实时显示未结款余额 |
 | 未结款 | 只读计算字段 | 自动 = 价格 - 结款，红色高亮提示 |
-| 借售 | 开关（Toggle） | 开启后自动同步销售情况为【借售】 |
 | 利润 | 只读计算字段 | 自动 = 价格 - 进货价，绿色显示 |
 | 购入时间 | 日期选择器 | 记录购入日期 |
-| 出售时间 | 日期选择器 | 销售状态为【已售/借售】时显示 |
 | 备注 | 多行文本域 | 可选填 |
+
+> **销售状态**不在产品/裸石编辑页操作，统一在【销售管理】中变更。所有数字输入框采用 NumberInput 组件，修复了值为 0 时无法按 Backspace 删除的问题。
 
 ### 6.3 核心组件示例
 
@@ -984,6 +1082,12 @@ CREATE POLICY "Authenticated users can manage returns"
   ON product_returns FOR ALL
   TO authenticated USING (true) WITH CHECK (true);
 
+-- 借调记录同样配置
+ALTER TABLE item_loans ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Authenticated users can manage loans"
+  ON item_loans FOR ALL
+  TO authenticated USING (true) WITH CHECK (true);
+
 -- Storage：已登录用户可上传图片
 CREATE POLICY "Authenticated users can upload images"
   ON storage.objects FOR INSERT
@@ -999,7 +1103,7 @@ CREATE POLICY "Anyone can read product images"
 
 - 所有 API Routes 在服务端使用 `service_role key`，不暴露给前端
 - 使用 Supabase Auth 中间件验证用户 Session，未登录返回 401
-- 图片上传限制：单文件最大 5MB，只允许 jpg/png/webp 格式
+- 图片/文档上传限制：单文件最大 10MB，允许 jpg/png/webp 图片及 PDF/Word 文档
 - 使用 `zod` 对请求体进行 Schema 校验，防止恶意数据写入
 - 生产环境强制 HTTPS（Vercel 自动配置）
 
@@ -1069,4 +1173,4 @@ export const config = {
 
 ---
 
-*珠宝黄金销售管理系统 · 技术设计文档 v1.1*
+*珠宝黄金销售管理系统 · 技术设计文档 v1.2*
