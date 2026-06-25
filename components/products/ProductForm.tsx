@@ -122,14 +122,6 @@ export function ProductForm({ initial }: ProductFormProps) {
     }));
   }
 
-  function handleConsignmentToggle(checked: boolean) {
-    setForm((prev) => ({
-      ...prev,
-      is_consignment: checked,
-      sale_status: checked ? "consignment" : "in_stock",
-    }));
-  }
-
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
@@ -357,18 +349,6 @@ export function ProductForm({ initial }: ProductFormProps) {
               {opt.label}
             </button>
           ))}
-        </div>
-      </div>
-
-      {/* 开关 */}
-      <div className="flex flex-wrap gap-8">
-        <div className="flex items-center gap-3">
-          <Switch
-            checked={form.is_consignment}
-            onCheckedChange={handleConsignmentToggle}
-            id="is_consignment"
-          />
-          <Label htmlFor="is_consignment">借售</Label>
         </div>
       </div>
 
