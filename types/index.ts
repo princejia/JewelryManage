@@ -50,6 +50,12 @@ export interface LooseStone {
   weight: number | null;
   price: number;
   gemstone_category: GemstoneCategory | null;
+  origin: string | null;
+  certificate: string | null;
+  purchase_price: number;
+  sale_price: number;
+  purchased_at: string | null;
+  sold_at: string | null;
   notes: string | null;
   created_at: string;
   updated_at: string;
@@ -62,6 +68,12 @@ export type LooseStoneInput = {
   weight: number | null;
   price: number;
   gemstone_category: GemstoneCategory | null;
+  origin: string | null;
+  certificate: string | null;
+  purchase_price: number;
+  sale_price: number;
+  purchased_at: string | null;
+  sold_at: string | null;
   notes: string | null;
 };
 
@@ -76,6 +88,22 @@ export interface ProductSale {
 }
 
 export interface ProductSaleWithRelations extends ProductSale {
+  products?: Pick<Product, "id" | "name" | "image_urls"> | null;
+  customers?: Pick<Customer, "id" | "name"> | null;
+}
+
+export interface ProductReturn {
+  id: string;
+  sale_id: string | null;
+  product_id: string | null;
+  customer_id: string | null;
+  refund_amount: number;
+  reason: string | null;
+  returned_at: string;
+  created_at: string;
+}
+
+export interface ProductReturnWithRelations extends ProductReturn {
   products?: Pick<Product, "id" | "name" | "image_urls"> | null;
   customers?: Pick<Customer, "id" | "name"> | null;
 }

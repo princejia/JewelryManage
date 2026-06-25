@@ -2,7 +2,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { Product } from "@/types";
 import { StatusBadge } from "@/components/ui/StatusBadge";
-import { formatCurrency, formatProductCode } from "@/lib/utils";
+import { formatCurrency, formatDate, formatProductCode } from "@/lib/utils";
 
 export function ProductCard({ product }: { product: Product }) {
   return (
@@ -51,6 +51,11 @@ export function ProductCard({ product }: { product: Product }) {
           {product.unsettled_amount > 0 && (
             <p className="mt-1 text-xs text-red-500">
               未结款：{formatCurrency(product.unsettled_amount)}
+            </p>
+          )}
+          {product.sale_status !== "in_stock" && product.sold_at && (
+            <p className="mt-1 text-xs text-gray-400">
+              出售时间：{formatDate(product.sold_at)}
             </p>
           )}
         </div>

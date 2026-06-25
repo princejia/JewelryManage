@@ -25,12 +25,13 @@ export function ProductTable({ products }: { products: Product[] }) {
             <TableHead className="text-right">利润</TableHead>
             <TableHead>产地</TableHead>
             <TableHead>购入时间</TableHead>
+            <TableHead>出售时间</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
           {products.length === 0 ? (
             <TableRow>
-              <TableCell colSpan={8} className="text-center text-gray-400">
+              <TableCell colSpan={9} className="text-center text-gray-400">
                 暂无数据
               </TableCell>
             </TableRow>
@@ -74,6 +75,9 @@ export function ProductTable({ products }: { products: Product[] }) {
                 </TableCell>
                 <TableCell className="text-gray-600">
                   {formatDate(p.purchased_at)}
+                </TableCell>
+                <TableCell className="text-gray-600">
+                  {p.sale_status !== "in_stock" ? formatDate(p.sold_at) : "-"}
                 </TableCell>
               </TableRow>
             ))

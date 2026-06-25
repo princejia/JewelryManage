@@ -1,5 +1,5 @@
 import { createServerClient } from "@/lib/supabase-server";
-import { ProductSaleWithRelations } from "@/types";
+import { ProductSaleWithRelations, ProductReturn } from "@/types";
 import { StatsCard } from "@/components/ui/StatsCard";
 import {
   Table,
@@ -12,6 +12,7 @@ import {
 import { Receipt, TrendingUp, Users } from "lucide-react";
 import { formatCurrency, formatDate } from "@/lib/utils";
 import { RecordSaleDialog } from "@/components/sales/RecordSaleDialog";
+import { ReturnsManager } from "@/components/sales/ReturnsManager";
 
 export const dynamic = "force-dynamic";
 
@@ -24,8 +25,18 @@ export default async function SalesPage() {
 
   const sales = (data ?? []) as ProductSaleWithRelations[];
 
-  const totalRevenue = sales.reduce((s, r) => s + Number(r.sale_price || 0), 0);
-  const avgPrice = sales.length ? totalRevenue / sales.length : 0;
+  const { data: returnsData } = await supabase
+    .from("product_returns")
+    .select("refund_amount");
+  const returns = (returnsData ?? []) as Pick<ProductReturn, "refund_amount">[];
+  const totalRefund = returns.reduce(
+    (s, r) => s + Number(r.refund_amount || 0),
+    0
+  );
+
+  const grossRevenue = sales.reduce((s, r) => s + Number(r.sale_price || 0), 0);
+  const totalRevenue = grossRevenue - totalRefund;
+  const avgPrice = sales.length ? grossRevenue / sales.length : 0;
 
   return (
     <div className="space-y-6">
@@ -91,6 +102,8 @@ export default async function SalesPage() {
           </TableBody>
         </Table>
       </div>
+
+      <ReturnsManager />
     </div>
   );
 }

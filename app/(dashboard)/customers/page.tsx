@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
-import { Plus, Loader2 } from "lucide-react";
+import { Plus, Loader2, Pencil, Trash2 } from "lucide-react";
 import { Customer } from "@/types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -21,10 +21,12 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from "@/components/ui/dialog";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { formatDate } from "@/lib/utils";
 import { CustomerHistoryDialog } from "@/components/customers/CustomerHistoryDialog";
+
+const EMPTY_FORM = { name: "", phone: "", wechat: "", notes: "" };
 
 export default function CustomersPage() {
   const [customers, setCustomers] = useState<Customer[]>([]);
@@ -33,18 +35,19 @@ export default function CustomersPage() {
   const [open, setOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [form, setForm] = useState({
-    name: "",
-    phone: "",
-    wechat: "",
-    notes: "",
-  });
+  const [editing, setEditing] = useState<Customer | null>(null);
+  const [form, setForm] = useState(EMPTY_FORM);
+
+  const [deleteTarget, setDeleteTarget] = useState<Customer | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   const fetchCustomers = useCallback(async () => {
     setLoading(true);
     const params = new URLSearchParams();
     if (search) params.set("search", search);
-    const res = await fetch(`/api/customers?${params.toString()}`);
+    const res = await fetch(`/api/customers?${params.toString()}`, {
+      cache: "no-store",
+    });
     const json = await res.json();
     setCustomers(json.data ?? []);
     setLoading(false);
@@ -55,102 +58,79 @@ export default function CustomersPage() {
     return () => clearTimeout(t);
   }, [fetchCustomers]);
 
-  async function handleCreate() {
+  function openCreate() {
+    setEditing(null);
+    setForm(EMPTY_FORM);
+    setError(null);
+    setOpen(true);
+  }
+
+  function openEdit(c: Customer) {
+    setEditing(c);
+    setForm({
+      name: c.name,
+      phone: c.phone ?? "",
+      wechat: c.wechat ?? "",
+      notes: c.notes ?? "",
+    });
+    setError(null);
+    setOpen(true);
+  }
+
+  async function handleSave() {
     setError(null);
     if (!form.name.trim()) {
       setError("客户姓名必填");
       return;
     }
     setSaving(true);
-    const res = await fetch("/api/customers", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        name: form.name,
-        phone: form.phone || null,
-        wechat: form.wechat || null,
-        notes: form.notes || null,
-      }),
-    });
+    const payload = {
+      name: form.name,
+      phone: form.phone || null,
+      wechat: form.wechat || null,
+      notes: form.notes || null,
+    };
+    const res = await fetch(
+      editing ? `/api/customers/${editing.id}` : "/api/customers",
+      {
+        method: editing ? "PATCH" : "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      }
+    );
     setSaving(false);
     if (!res.ok) {
       const json = await res.json().catch(() => ({}));
       setError(json.error || "保存失败");
       return;
     }
-    setForm({ name: "", phone: "", wechat: "", notes: "" });
+    setForm(EMPTY_FORM);
+    setEditing(null);
     setOpen(false);
     fetchCustomers();
+  }
+
+  async function handleDelete() {
+    if (!deleteTarget) return;
+    setDeleting(true);
+    const res = await fetch(`/api/customers/${deleteTarget.id}`, {
+      method: "DELETE",
+    });
+    setDeleting(false);
+    if (res.ok) {
+      setDeleteTarget(null);
+      fetchCustomers();
+    }
   }
 
   return (
     <div className="space-y-5">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold text-gray-900">客户管理</h1>
-        <Dialog open={open} onOpenChange={setOpen}>
-          <DialogTrigger asChild>
-            <Button>
-              <Plus className="h-4 w-4" />
-              新增客户
-            </Button>
-          </DialogTrigger>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>新增客户</DialogTitle>
-            </DialogHeader>
-            <div className="space-y-3">
-              <div className="space-y-2">
-                <Label htmlFor="c-name">客户姓名 *</Label>
-                <Input
-                  id="c-name"
-                  value={form.name}
-                  onChange={(e) =>
-                    setForm({ ...form, name: e.target.value })
-                  }
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="c-phone">联系电话</Label>
-                <Input
-                  id="c-phone"
-                  value={form.phone}
-                  onChange={(e) =>
-                    setForm({ ...form, phone: e.target.value })
-                  }
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="c-wechat">微信号</Label>
-                <Input
-                  id="c-wechat"
-                  value={form.wechat}
-                  onChange={(e) =>
-                    setForm({ ...form, wechat: e.target.value })
-                  }
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="c-notes">备注</Label>
-                <Textarea
-                  id="c-notes"
-                  value={form.notes}
-                  onChange={(e) =>
-                    setForm({ ...form, notes: e.target.value })
-                  }
-                />
-              </div>
-              {error && <p className="text-sm text-red-500">{error}</p>}
-            </div>
-            <DialogFooter>
-              <Button variant="outline" onClick={() => setOpen(false)}>
-                取消
-              </Button>
-              <Button onClick={handleCreate} disabled={saving}>
-                {saving ? "保存中..." : "保存"}
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
+        <Button onClick={openCreate}>
+          <Plus className="h-4 w-4" />
+          新增客户
+        </Button>
       </div>
 
       <Input
@@ -195,10 +175,27 @@ export default function CustomersPage() {
                     </TableCell>
                     <TableCell>{formatDate(c.created_at)}</TableCell>
                     <TableCell className="text-right">
-                      <CustomerHistoryDialog
-                        customerId={c.id}
-                        customerName={c.name}
-                      />
+                      <div className="flex items-center justify-end gap-1">
+                        <CustomerHistoryDialog
+                          customerId={c.id}
+                          customerName={c.name}
+                        />
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => openEdit(c)}
+                        >
+                          <Pencil className="h-4 w-4" />
+                          编辑
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => setDeleteTarget(c)}
+                        >
+                          <Trash2 className="h-4 w-4 text-red-500" />
+                        </Button>
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))
@@ -207,6 +204,67 @@ export default function CustomersPage() {
           </Table>
         </div>
       )}
+
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{editing ? "编辑客户" : "新增客户"}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div className="space-y-2">
+              <Label htmlFor="c-name">客户姓名 *</Label>
+              <Input
+                id="c-name"
+                value={form.name}
+                onChange={(e) => setForm({ ...form, name: e.target.value })}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="c-phone">联系电话</Label>
+              <Input
+                id="c-phone"
+                value={form.phone}
+                onChange={(e) => setForm({ ...form, phone: e.target.value })}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="c-wechat">微信号</Label>
+              <Input
+                id="c-wechat"
+                value={form.wechat}
+                onChange={(e) => setForm({ ...form, wechat: e.target.value })}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="c-notes">备注</Label>
+              <Textarea
+                id="c-notes"
+                value={form.notes}
+                onChange={(e) => setForm({ ...form, notes: e.target.value })}
+              />
+            </div>
+            {error && <p className="text-sm text-red-500">{error}</p>}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setOpen(false)}>
+              取消
+            </Button>
+            <Button onClick={handleSave} disabled={saving}>
+              {saving ? "保存中..." : "保存"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <ConfirmDialog
+        open={!!deleteTarget}
+        onOpenChange={(o) => !o && setDeleteTarget(null)}
+        title="确认删除该客户？"
+        description={`将永久删除客户「${deleteTarget?.name ?? ""}」，其关联销售记录的客户信息会被清空。此操作不可撤销。`}
+        confirmText="确认删除"
+        loading={deleting}
+        onConfirm={handleDelete}
+      />
     </div>
   );
 }

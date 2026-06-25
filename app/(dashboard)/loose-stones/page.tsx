@@ -8,6 +8,7 @@ import { exportLooseStonesToExcel } from "@/lib/export";
 import { LooseStoneCard } from "@/components/loose-stones/LooseStoneCard";
 import { LooseStoneTable } from "@/components/loose-stones/LooseStoneTable";
 import { LooseStoneFormDialog } from "@/components/loose-stones/LooseStoneFormDialog";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import {
   LooseStoneFilters,
   LooseStoneFilterState,
@@ -22,6 +23,8 @@ export default function LooseStonesPage() {
   const [loading, setLoading] = useState(true);
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<LooseStone | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<LooseStone | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   const fetchStones = useCallback(async () => {
     setLoading(true);
@@ -34,7 +37,9 @@ export default function LooseStonesPage() {
     params.set("sort_by", filters.sort_by);
     params.set("order", filters.order);
 
-    const res = await fetch(`/api/loose-stones?${params.toString()}`);
+    const res = await fetch(`/api/loose-stones?${params.toString()}`, {
+      cache: "no-store",
+    });
     const json = await res.json();
     setStones(json.data ?? []);
     setLoading(false);
@@ -55,10 +60,17 @@ export default function LooseStonesPage() {
     setOpen(true);
   }
 
-  async function handleDelete(id: string) {
-    if (!confirm("确定删除这颗裸石？")) return;
-    const res = await fetch(`/api/loose-stones/${id}`, { method: "DELETE" });
-    if (res.ok) fetchStones();
+  async function handleDelete() {
+    if (!deleteTarget) return;
+    setDeleting(true);
+    const res = await fetch(`/api/loose-stones/${deleteTarget.id}`, {
+      method: "DELETE",
+    });
+    setDeleting(false);
+    if (res.ok) {
+      setDeleteTarget(null);
+      fetchStones();
+    }
   }
 
   return (
@@ -131,7 +143,9 @@ export default function LooseStonesPage() {
         <LooseStoneTable
           stones={stones}
           onEdit={openEdit}
-          onDelete={handleDelete}
+          onDelete={(id) =>
+            setDeleteTarget(stones.find((s) => s.id === id) ?? null)
+          }
         />
       )}
 
@@ -140,6 +154,16 @@ export default function LooseStonesPage() {
         onOpenChange={setOpen}
         initial={editing}
         onSaved={fetchStones}
+      />
+
+      <ConfirmDialog
+        open={!!deleteTarget}
+        onOpenChange={(o) => !o && setDeleteTarget(null)}
+        title="确认删除这颗裸石？"
+        description="此操作不可撤销，将永久删除该裸石记录。"
+        confirmText="确认删除"
+        loading={deleting}
+        onConfirm={handleDelete}
       />
     </div>
   );

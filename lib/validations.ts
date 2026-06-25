@@ -32,6 +32,12 @@ export const looseStoneSchema = z.object({
   weight: z.coerce.number().nonnegative().nullable().optional(),
   price: z.coerce.number().nonnegative().default(0),
   gemstone_category: z.string().max(100).nullable().optional(),
+  origin: z.string().max(100).nullable().optional(),
+  certificate: z.string().max(255).nullable().optional(),
+  purchase_price: z.coerce.number().nonnegative().default(0),
+  sale_price: z.coerce.number().nonnegative().default(0),
+  purchased_at: z.string().nullable().optional(),
+  sold_at: z.string().nullable().optional(),
   notes: z.string().nullable().optional(),
 });
 
@@ -55,3 +61,14 @@ export const saleSchema = z.object({
 });
 
 export type SaleSchema = z.infer<typeof saleSchema>;
+
+export const returnSchema = z.object({
+  sale_id: z.string().uuid().nullable().optional(),
+  product_id: z.string().uuid().nullable().optional(),
+  customer_id: z.string().uuid().nullable().optional(),
+  refund_amount: z.coerce.number().nonnegative(),
+  reason: z.string().nullable().optional(),
+  returned_at: z.string().optional(),
+});
+
+export type ReturnSchema = z.infer<typeof returnSchema>;

@@ -21,5 +21,12 @@ export function createServerClient() {
       autoRefreshToken: false,
       persistSession: false,
     },
+    global: {
+      // 关闭 Next.js Data Cache，确保服务端读取的始终是最新数据
+      // （否则仪表盘 / 详情页 / 接口可能返回被缓存的旧数据，
+      //  例如删除图片后重新打开仍显示旧图）
+      fetch: (input, init) =>
+        fetch(input as RequestInfo, { ...init, cache: "no-store" }),
+    },
   });
 }

@@ -53,10 +53,24 @@ CREATE TABLE IF NOT EXISTS loose_stones (
   weight             DECIMAL(10,3),
   price              DECIMAL(12,2) DEFAULT 0,
   gemstone_category  VARCHAR(100),
+  origin             VARCHAR(100),
+  certificate        VARCHAR(255),
+  purchase_price     DECIMAL(12,2) DEFAULT 0,
+  sale_price         DECIMAL(12,2) DEFAULT 0,
+  purchased_at       DATE,
+  sold_at            DATE,
   notes              TEXT,
   created_at         TIMESTAMPTZ DEFAULT NOW(),
   updated_at         TIMESTAMPTZ DEFAULT NOW()
 );
+
+-- 裸石追加新字段（幂等）
+ALTER TABLE loose_stones ADD COLUMN IF NOT EXISTS origin         VARCHAR(100);
+ALTER TABLE loose_stones ADD COLUMN IF NOT EXISTS certificate    VARCHAR(255);
+ALTER TABLE loose_stones ADD COLUMN IF NOT EXISTS purchase_price DECIMAL(12,2) DEFAULT 0;
+ALTER TABLE loose_stones ADD COLUMN IF NOT EXISTS sale_price     DECIMAL(12,2) DEFAULT 0;
+ALTER TABLE loose_stones ADD COLUMN IF NOT EXISTS purchased_at   DATE;
+ALTER TABLE loose_stones ADD COLUMN IF NOT EXISTS sold_at        DATE;
 
 -- ------------------------------------------------------------
 -- 产品主表
@@ -149,6 +163,23 @@ CREATE TABLE IF NOT EXISTS product_sales (
 );
 
 -- ------------------------------------------------------------
+-- 退货记录表（与销售记录关联）
+-- ------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS product_returns (
+  id             UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  sale_id        UUID REFERENCES product_sales(id) ON DELETE SET NULL,
+  product_id     UUID REFERENCES products(id) ON DELETE SET NULL,
+  customer_id    UUID REFERENCES customers(id) ON DELETE SET NULL,
+  refund_amount  DECIMAL(12,2) NOT NULL DEFAULT 0,
+  reason         TEXT,
+  returned_at    DATE NOT NULL DEFAULT CURRENT_DATE,
+  created_at     TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_product_returns_sale ON product_returns(sale_id);
+CREATE INDEX IF NOT EXISTS idx_product_returns_returned_at ON product_returns(returned_at);
+
+-- ------------------------------------------------------------
 -- 自动更新 updated_at 触发器
 -- ------------------------------------------------------------
 CREATE OR REPLACE FUNCTION update_updated_at()
@@ -218,6 +249,7 @@ ALTER TABLE products ENABLE ROW LEVEL SECURITY;
 ALTER TABLE customers ENABLE ROW LEVEL SECURITY;
 ALTER TABLE product_sales ENABLE ROW LEVEL SECURITY;
 ALTER TABLE loose_stones ENABLE ROW LEVEL SECURITY;
+ALTER TABLE product_returns ENABLE ROW LEVEL SECURITY;
 
 DROP POLICY IF EXISTS "Authenticated users can read products" ON products;
 CREATE POLICY "Authenticated users can read products"
@@ -242,6 +274,11 @@ CREATE POLICY "Authenticated users can manage sales"
 DROP POLICY IF EXISTS "Authenticated users can manage loose stones" ON loose_stones;
 CREATE POLICY "Authenticated users can manage loose stones"
   ON loose_stones FOR ALL
+  TO authenticated USING (true) WITH CHECK (true);
+
+DROP POLICY IF EXISTS "Authenticated users can manage returns" ON product_returns;
+CREATE POLICY "Authenticated users can manage returns"
+  ON product_returns FOR ALL
   TO authenticated USING (true) WITH CHECK (true);
 
 -- ============================================================

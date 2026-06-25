@@ -36,7 +36,9 @@ export default function ProductsPage() {
     params.set("sort_by", filters.sort_by);
     params.set("order", filters.order);
 
-    const res = await fetch(`/api/products?${params.toString()}`);
+    const res = await fetch(`/api/products?${params.toString()}`, {
+      cache: "no-store",
+    });
     const json: PaginatedResponse<Product> = await res.json();
     setProducts(json.data ?? []);
     setTotalPages(json.totalPages ?? 1);

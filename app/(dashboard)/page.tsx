@@ -47,14 +47,26 @@ export default async function DashboardPage() {
   const soldThisMonth = list.filter(
     (p) => p.sold_at && p.sold_at >= ms
   );
-  const monthRevenue = soldThisMonth.reduce(
+  const monthRevenueGross = soldThisMonth.reduce(
     (s, p) => s + Number(p.price || 0),
     0
   );
-  const monthProfit = soldThisMonth.reduce(
+  const monthProfitGross = soldThisMonth.reduce(
     (s, p) => s + Number(p.profit || 0),
     0
   );
+
+  // 本月退货：抵减销售额与利润，保持与销售记录同步
+  const { data: returnsData } = await supabase
+    .from("product_returns")
+    .select("refund_amount, returned_at")
+    .gte("returned_at", ms);
+  const monthRefund = (returnsData ?? []).reduce(
+    (s, r) => s + Number(r.refund_amount || 0),
+    0
+  );
+  const monthRevenue = monthRevenueGross - monthRefund;
+  const monthProfit = monthProfitGross - monthRefund;
 
   // 未结款超 7 天的产品
   const sevenDaysAgo = new Date(Date.now() - 7 * 86400000)

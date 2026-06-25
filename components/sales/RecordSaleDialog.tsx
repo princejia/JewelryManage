@@ -42,10 +42,10 @@ export function RecordSaleDialog() {
 
   useEffect(() => {
     if (!open) return;
-    fetch("/api/products?status=in_stock&limit=100")
+    fetch("/api/products?status=in_stock&limit=100", { cache: "no-store" })
       .then((r) => r.json())
       .then((j) => setProducts(j.data ?? []));
-    fetch("/api/customers")
+    fetch("/api/customers", { cache: "no-store" })
       .then((r) => r.json())
       .then((j) => setCustomers(j.data ?? []));
   }, [open]);

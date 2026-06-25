@@ -370,14 +370,6 @@ export function ProductForm({ initial }: ProductFormProps) {
           />
           <Label htmlFor="is_consignment">借售</Label>
         </div>
-        <div className="flex items-center gap-3">
-          <Switch
-            checked={form.is_loose_stone}
-            onCheckedChange={(v) => set("is_loose_stone", v)}
-            id="is_loose_stone"
-          />
-          <Label htmlFor="is_loose_stone">裸石</Label>
-        </div>
       </div>
 
       {/* 从现有裸石生产 */}
