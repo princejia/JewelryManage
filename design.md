@@ -1,5 +1,5 @@
 # 珠宝黄金销售管理系统
-## Jewelry & Gold Sales Management System — 技术设计文档 v1.0
+## Jewelry & Gold Sales Management System — 技术设计文档 v1.1
 
 **技术栈：** Next.js 14 (App Router) + Supabase + Vercel  
 **数据库：** PostgreSQL (Supabase)  
@@ -118,13 +118,34 @@
 | weight | 克重 | DECIMAL(10,3) | 裸石重量，单位克 |
 | price | 价格 | DECIMAL(12,2) | 裸石价格 |
 | gemstone_category | 宝石分类 | VARCHAR(100) | 自由文本，支持输入并按历史值模糊自动补全 |
+| origin | 产地 | VARCHAR(100) | 裸石产地 |
+| certificate | 证书 | VARCHAR(255) | 证书编号或描述 |
+| purchase_price | 进货价(¥) | DECIMAL(12,2) | 购入成本 |
+| sale_price | 售出价(¥) | DECIMAL(12,2) | 售出价格 |
+| purchased_at | 购入时间 | DATE | 裸石购入日期 |
+| sold_at | 卖出时间 | DATE | 裸石卖出日期，未售出时为 NULL |
 | notes | 备注 | TEXT | 额外备注，可选填 |
 | created_at | 创建时间 | TIMESTAMPTZ | 自动设置 |
 | updated_at | 更新时间 | TIMESTAMPTZ | 自动维护 |
 
-> **裸石编号**：`code` 字段同样在入库时自动生成并持久化，规则为 `L + 北京时间年月日时分秒`（如 `L20260624153012`）。裸石管理界面与产品管理保持一致：支持卡片/表格视图、图片展示、搜索与筛选、导出 Excel（首张图片嵌入第一列）。
+> **裸石编号**：`code` 字段同样在入库时自动生成并持久化，规则为 `L + 北京时间年月日时分秒`（如 `L20260624153012`）。裸石管理界面与产品管理保持一致：支持卡片/表格视图、图片展示、搜索与筛选、增删改（删除带二次确认）、导出 Excel（首张图片嵌入第一列）。
 
-### 2.5 SQL 建表语句
+### 2.5 关联表：product_returns（退货记录表）
+
+退货与销售记录关联，登记退货后对应产品自动恢复为【在库】状态。
+
+| 字段名 | 中文名 | 类型 | 说明 |
+|--------|--------|------|------|
+| id | 主键 | UUID | 唯一标识 |
+| sale_id | 销售ID | UUID FK | 关联 product_sales.id，可为空 |
+| product_id | 产品ID | UUID FK | 关联 products.id，可为空 |
+| customer_id | 客户ID | UUID FK | 关联 customers.id，可为空 |
+| refund_amount | 退款金额 | DECIMAL(12,2) | 退还给客户的金额 |
+| reason | 退货原因 | TEXT | 退货说明，可选填 |
+| returned_at | 退货时间 | DATE | 退货日期 |
+| created_at | 记录时间 | TIMESTAMPTZ | 自动设置 |
+
+### 2.6 SQL 建表语句
 
 在 Supabase SQL Editor 中执行：
 
@@ -151,6 +172,12 @@ CREATE TABLE loose_stones (
   weight             DECIMAL(10,3),
   price              DECIMAL(12,2) DEFAULT 0,
   gemstone_category  VARCHAR(100),
+  origin             VARCHAR(100),   -- 产地
+  certificate        VARCHAR(255),   -- 证书
+  purchase_price     DECIMAL(12,2) DEFAULT 0,  -- 进货价
+  sale_price         DECIMAL(12,2) DEFAULT 0,  -- 售出价
+  purchased_at       DATE,           -- 购入时间
+  sold_at            DATE,           -- 卖出时间
   notes              TEXT,
   created_at         TIMESTAMPTZ DEFAULT NOW(),
   updated_at         TIMESTAMPTZ DEFAULT NOW()
@@ -207,6 +234,18 @@ CREATE TABLE product_sales (
   created_at     TIMESTAMPTZ DEFAULT NOW()
 );
 
+-- 退货记录表（登记退货后产品恢复为在库）
+CREATE TABLE product_returns (
+  id             UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  sale_id        UUID REFERENCES product_sales(id) ON DELETE SET NULL,
+  product_id     UUID REFERENCES products(id) ON DELETE SET NULL,
+  customer_id    UUID REFERENCES customers(id) ON DELETE SET NULL,
+  refund_amount  DECIMAL(12,2) DEFAULT 0,
+  reason         TEXT,
+  returned_at    DATE NOT NULL DEFAULT CURRENT_DATE,
+  created_at     TIMESTAMPTZ DEFAULT NOW()
+);
+
 -- 自动更新 updated_at 触发器
 CREATE OR REPLACE FUNCTION update_updated_at()
 RETURNS TRIGGER AS $$
@@ -249,6 +288,9 @@ CREATE INDEX idx_products_created_at ON products(created_at DESC);
 CREATE INDEX idx_products_name ON products USING gin(to_tsvector('simple', name));
 CREATE INDEX idx_products_code ON products(code);
 CREATE INDEX idx_loose_stones_code ON loose_stones(code);
+CREATE INDEX idx_returns_sale ON product_returns(sale_id);
+CREATE INDEX idx_returns_product ON product_returns(product_id);
+CREATE INDEX idx_returns_returned_at ON product_returns(returned_at);
 ```
 
 ---
@@ -374,17 +416,19 @@ jewelry-system/
 - 销售状态流转：在库 → 已售/借售，状态变更时自动填入出售时间
 - 利润实时预览：填写进货价和售价后立即显示利润
 - 未结款实时计算：售价 - 已结款 = 未结款（红色高亮提示）
+- 删除产品/裸石均需二次确认，防止误删
 
 ### 4.3 销售记录模块 `/sales`
 
 - 按时间范围查看销售流水
 - 每条记录显示：产品信息、客户、成交价、付款方式、成交时间
 - 付款状态跟踪：支持记录部分付款
-- 时间段汇总：总销售额、总利润、平均客单价
+- **退货管理**：在销售页登记退货（关联某笔销售，自动带出产品/客户/退款金额），可编辑、可删除；登记后产品自动恢复为【在库】
+- 时间段汇总：总销售额（已扣除退款）、总利润、平均客单价
 
 ### 4.4 客户管理模块 `/customers`
 
-- 客户档案：姓名、电话、微信、备注
+- 客户档案：姓名、电话、微信、备注，支持新增/编辑/删除（删除带二次确认）
 - 购买历史：点击客户查看其所有购买记录
 - 欠款客户快速筛选
 
@@ -416,6 +460,16 @@ jewelry-system/
 | POST | /api/sales | 创建销售记录 | 同时更新产品状态 |
 | GET | /api/customers | 客户列表 | |
 | POST | /api/customers | 创建客户 | |
+| PATCH | /api/customers/[id] | 更新客户 | 部分更新 |
+| DELETE | /api/customers/[id] | 删除客户 | 前端二次确认 |
+| GET | /api/loose-stones | 裸石列表 | 支持筛选、搜索 |
+| POST | /api/loose-stones | 创建裸石 | |
+| PATCH | /api/loose-stones/[id] | 更新裸石 | 部分更新 |
+| DELETE | /api/loose-stones/[id] | 删除裸石 | 前端二次确认 |
+| GET | /api/returns | 获取退货记录 | 含产品/客户关联，支持时间、客户筛选 |
+| POST | /api/returns | 登记退货 | 同时将产品恢复为【在库】 |
+| PATCH | /api/returns/[id] | 更新退货 | 部分更新 |
+| DELETE | /api/returns/[id] | 删除退货 | |
 
 ### 5.2 查询参数（GET /api/products）
 
@@ -452,7 +506,15 @@ import { createClient } from '@supabase/supabase-js'
 export function createServerClient() {
   return createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!  // 服务端使用 service role key
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,  // 服务端使用 service role key
+    {
+      // 注入 no-store fetch，绕过 Next.js Data Cache，避免读到陈旧数据
+      // （修复图片删除后重现、仪表盘数据不同步等问题）
+      global: {
+        fetch: (input, init) =>
+          fetch(input as RequestInfo, { ...init, cache: 'no-store' }),
+      },
+    }
   )
 }
 ```
@@ -507,6 +569,12 @@ export interface LooseStone {
   weight: number | null
   price: number
   gemstone_category: string | null   // 自由文本
+  origin: string | null              // 产地
+  certificate: string | null         // 证书
+  purchase_price: number             // 进货价
+  sale_price: number                 // 售出价
+  purchased_at: string | null        // 购入时间
+  sold_at: string | null             // 卖出时间
   notes: string | null
   created_at: string
   updated_at: string
@@ -519,6 +587,17 @@ export interface ProductSale {
   sale_price: number
   payment_method: string | null
   sold_at: string
+  created_at: string
+}
+
+export interface ProductReturn {
+  id: string
+  sale_id: string | null
+  product_id: string | null
+  customer_id: string | null
+  refund_amount: number
+  reason: string | null
+  returned_at: string
   created_at: string
 }
 ```
@@ -707,7 +786,6 @@ export async function POST(req: NextRequest) {
 | 结款 | 数字输入 | 已收款额，实时显示未结款余额 |
 | 未结款 | 只读计算字段 | 自动 = 价格 - 结款，红色高亮提示 |
 | 借售 | 开关（Toggle） | 开启后自动同步销售情况为【借售】 |
-| 裸石 | 开关（Toggle） | 标记是否为未镶嵌裸石 |
 | 利润 | 只读计算字段 | 自动 = 价格 - 进货价，绿色显示 |
 | 购入时间 | 日期选择器 | 记录购入日期 |
 | 出售时间 | 日期选择器 | 销售状态为【已售/借售】时显示 |
@@ -900,6 +978,12 @@ CREATE POLICY "Authenticated users can manage sales"
   ON product_sales FOR ALL
   TO authenticated USING (true) WITH CHECK (true);
 
+-- 退货记录同样配置
+ALTER TABLE product_returns ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Authenticated users can manage returns"
+  ON product_returns FOR ALL
+  TO authenticated USING (true) WITH CHECK (true);
+
 -- Storage：已登录用户可上传图片
 CREATE POLICY "Authenticated users can upload images"
   ON storage.objects FOR INSERT
@@ -985,4 +1069,4 @@ export const config = {
 
 ---
 
-*珠宝黄金销售管理系统 · 技术设计文档 v1.0*
+*珠宝黄金销售管理系统 · 技术设计文档 v1.1*
