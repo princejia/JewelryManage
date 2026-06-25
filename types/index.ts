@@ -9,8 +9,10 @@ export interface Product {
   id: string;
   code: string | null;
   image_urls: string[];
+  certificate_urls: string[];
   name: string;
   total_weight: number | null;
+  weight_unit: string | null;
   size: string | null;
   origin: string | null;
   inlaid_stones: string | null;
@@ -19,6 +21,7 @@ export interface Product {
   source_loose_stone_id: string | null;
   price: number;
   purchase_price: number;
+  sale_price: number;
   sale_status: SaleStatus;
   settled_amount: number;
   unsettled_amount: number; // 数据库自动计算
@@ -30,6 +33,8 @@ export interface Product {
   notes: string | null;
   created_at: string;
   updated_at: string;
+  /** 派生字段：是否存在未归还的借调记录 */
+  is_loaned?: boolean;
 }
 
 export interface Customer {
@@ -45,41 +50,49 @@ export interface LooseStone {
   id: string;
   code: string | null;
   image_urls: string[];
+  certificate_urls: string[];
   size: string | null;
   material: string | null;
   weight: number | null;
+  weight_unit: string | null;
   price: number;
   gemstone_category: GemstoneCategory | null;
   origin: string | null;
   certificate: string | null;
   purchase_price: number;
   sale_price: number;
+  sale_status: SaleStatus;
   purchased_at: string | null;
   sold_at: string | null;
   notes: string | null;
   created_at: string;
   updated_at: string;
+  /** 派生字段：是否已被产品使用 */
+  is_used?: boolean;
+  /** 派生字段：是否存在未归还的借调记录 */
+  is_loaned?: boolean;
 }
 
 export type LooseStoneInput = {
   image_urls: string[];
+  certificate_urls: string[];
   size: string | null;
   material: string | null;
   weight: number | null;
+  weight_unit: string | null;
   price: number;
   gemstone_category: GemstoneCategory | null;
   origin: string | null;
   certificate: string | null;
   purchase_price: number;
-  sale_price: number;
   purchased_at: string | null;
-  sold_at: string | null;
   notes: string | null;
 };
 
 export interface ProductSale {
   id: string;
-  product_id: string;
+  product_id: string | null;
+  loose_stone_id: string | null;
   customer_id: string | null;
   sale_price: number;
   payment_method: string | null;
@@ -89,8 +102,38 @@ export interface ProductSale {
 
 export interface ProductSaleWithRelations extends ProductSale {
   products?: Pick<Product, "id" | "name" | "image_urls"> | null;
+  loose_stones?: Pick<LooseStone, "id" | "material" | "image_urls"> | null;
   customers?: Pick<Customer, "id" | "name"> | null;
 }
+
+export interface ItemLoan {
+  id: string;
+  product_id: string | null;
+  loose_stone_id: string | null;
+  borrower_name: string;
+  borrower_contact: string | null;
+  loaned_at: string;
+  due_at: string | null;
+  returned_at: string | null;
+  notes: string | null;
+  created_at: string;
+}
+
+export interface ItemLoanWithRelations extends ItemLoan {
+  products?: Pick<Product, "id" | "name" | "image_urls"> | null;
+  loose_stones?: Pick<LooseStone, "id" | "material" | "image_urls"> | null;
+}
+
+export type ItemLoanInput = {
+  product_id: string | null;
+  loose_stone_id: string | null;
+  borrower_name: string;
+  borrower_contact: string | null;
+  loaned_at: string;
+  due_at: string | null;
+  returned_at: string | null;
+  notes: string | null;
+};
 
 export interface ProductReturn {
   id: string;
@@ -119,8 +162,10 @@ export interface PaginatedResponse<T> {
 /** 产品表单输入类型（不含自动计算字段与时间戳） */
 export type ProductInput = {
   image_urls: string[];
+  certificate_urls: string[];
   name: string;
   total_weight: number | null;
+  weight_unit: string | null;
   size: string | null;
   origin: string | null;
   inlaid_stones: string | null;
@@ -129,6 +174,7 @@ export type ProductInput = {
   source_loose_stone_id: string | null;
   price: number;
   purchase_price: number;
+  sale_price: number;
   sale_status: SaleStatus;
   settled_amount: number;
   is_consignment: boolean;

@@ -13,7 +13,7 @@ export async function GET(req: NextRequest) {
   let query = supabase
     .from("product_sales")
     .select(
-      "*, products(id, name, image_urls), customers(id, name)"
+      "*, products(id, name, image_urls), customers(id, name), loose_stones(id, material, image_urls)"
     )
     .order("sold_at", { ascending: false });
 
@@ -40,23 +40,46 @@ export async function POST(req: NextRequest) {
 
   const supabase = createServerClient();
 
+  const soldAt = parsed.data.sold_at ?? new Date().toISOString().slice(0, 10);
+  const saleStatus = parsed.data.sale_status;
+
   const { data, error } = await supabase
     .from("product_sales")
-    .insert(parsed.data)
+    .insert({
+      product_id: parsed.data.product_id ?? null,
+      loose_stone_id: parsed.data.loose_stone_id ?? null,
+      customer_id: parsed.data.customer_id ?? null,
+      sale_price: parsed.data.sale_price,
+      payment_method: parsed.data.payment_method ?? null,
+      sold_at: soldAt,
+    })
     .select()
     .single();
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
-  // 创建销售记录后，同步更新产品状态为已售
-  await supabase
-    .from("products")
-    .update({
-      sale_status: "sold",
-      sold_at: parsed.data.sold_at ?? new Date().toISOString().slice(0, 10),
-      settled_amount: parsed.data.sale_price,
-    })
-    .eq("id", parsed.data.product_id);
+  // 创建销售记录后，同步更新对应产品或裸石的销售状态
+  if (parsed.data.product_id) {
+    await supabase
+      .from("products")
+      .update({
+        sale_status: saleStatus,
+        is_consignment: saleStatus === "consignment",
+        sold_at: soldAt,
+        sale_price: parsed.data.sale_price,
+        settled_amount: parsed.data.sale_price,
+      })
+      .eq("id", parsed.data.product_id);
+  } else if (parsed.data.loose_stone_id) {
+    await supabase
+      .from("loose_stones")
+      .update({
+        sale_status: saleStatus,
+        sold_at: soldAt,
+        sale_price: parsed.data.sale_price,
+      })
+      .eq("id", parsed.data.loose_stone_id);
+  }
 
   return NextResponse.json({ data }, { status: 201 });
 }

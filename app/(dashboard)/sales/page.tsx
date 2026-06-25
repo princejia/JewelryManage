@@ -20,7 +20,9 @@ export default async function SalesPage() {
   const supabase = createServerClient();
   const { data } = await supabase
     .from("product_sales")
-    .select("*, products(id, name, image_urls), customers(id, name)")
+    .select(
+      "*, products(id, name, image_urls), customers(id, name), loose_stones(id, material, image_urls)"
+    )
     .order("sold_at", { ascending: false });
 
   const sales = (data ?? []) as ProductSaleWithRelations[];
@@ -70,7 +72,8 @@ export default async function SalesPage() {
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>产品</TableHead>
+              <TableHead>物品</TableHead>
+              <TableHead>类型</TableHead>
               <TableHead>客户</TableHead>
               <TableHead className="text-right">成交价</TableHead>
               <TableHead>付款方式</TableHead>
@@ -80,7 +83,7 @@ export default async function SalesPage() {
           <TableBody>
             {sales.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={5} className="text-center text-gray-400">
+                <TableCell colSpan={6} className="text-center text-gray-400">
                   暂无销售记录
                 </TableCell>
               </TableRow>
@@ -88,7 +91,16 @@ export default async function SalesPage() {
               sales.map((s) => (
                 <TableRow key={s.id}>
                   <TableCell className="font-medium">
-                    {s.products?.name ?? "已删除产品"}
+                    {s.products?.name ??
+                      s.loose_stones?.material ??
+                      "已删除记录"}
+                  </TableCell>
+                  <TableCell>
+                    {s.loose_stones ? (
+                      <span className="text-blue-600">裸石</span>
+                    ) : (
+                      "产品"
+                    )}
                   </TableCell>
                   <TableCell>{s.customers?.name ?? "-"}</TableCell>
                   <TableCell className="text-right font-medium text-amber-700">

@@ -53,7 +53,14 @@ export function ProductTable({ products }: { products: Product[] }) {
                   </Link>
                 </TableCell>
                 <TableCell>
-                  <StatusBadge status={p.sale_status} />
+                  <div className="flex flex-wrap gap-1">
+                    <StatusBadge status={p.sale_status} />
+                    {p.is_loaned && (
+                      <span className="inline-flex items-center rounded-full bg-orange-100 px-2 py-0.5 text-[11px] font-medium text-orange-700">
+                        借调中
+                      </span>
+                    )}
+                  </div>
                 </TableCell>
                 <TableCell className="text-right font-medium text-amber-700">
                   {formatCurrency(p.price)}

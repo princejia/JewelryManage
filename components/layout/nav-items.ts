@@ -5,6 +5,7 @@ import {
   Receipt,
   Users,
   BarChart3,
+  ArrowLeftRight,
   type LucideIcon,
 } from "lucide-react";
 
@@ -19,6 +20,7 @@ export const NAV_ITEMS: NavItem[] = [
   { href: "/products", label: "产品管理", icon: Gem },
   { href: "/loose-stones", label: "裸石管理", icon: Diamond },
   { href: "/sales", label: "销售记录", icon: Receipt },
+  { href: "/loans", label: "借调管理", icon: ArrowLeftRight },
   { href: "/customers", label: "客户管理", icon: Users },
   { href: "/reports", label: "财务报表", icon: BarChart3 },
 ];

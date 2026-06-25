@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Combobox } from "@/components/ui/Combobox";
 import { ImageUpload } from "@/components/ui/ImageUpload";
+import { FileUpload } from "@/components/ui/FileUpload";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import {
   Dialog,
@@ -19,36 +20,38 @@ import {
 } from "@/components/ui/dialog";
 import { GEMSTONE_CATEGORY_SUGGESTIONS } from "@/lib/constants";
 
+const WEIGHT_UNIT_OPTIONS = ["克(g)", "克拉(ct)"];
+
 type FormState = {
   image_urls: string[];
+  certificate_urls: string[];
   material: string;
   gemstone_category: string;
   origin: string;
   certificate: string;
   size: string;
   weight: string;
+  weight_unit: string;
   price: string;
   purchase_price: string;
-  sale_price: string;
   purchased_at: string;
-  sold_at: string;
   notes: string;
 };
 
 function toFormState(s?: LooseStone | null): FormState {
   return {
     image_urls: s?.image_urls ?? [],
+    certificate_urls: s?.certificate_urls ?? [],
     material: s?.material ?? "",
     gemstone_category: s?.gemstone_category ?? "",
     origin: s?.origin ?? "",
     certificate: s?.certificate ?? "",
     size: s?.size ?? "",
     weight: s?.weight != null ? String(s.weight) : "",
+    weight_unit: s?.weight_unit ?? "克(g)",
     price: s?.price != null ? String(s.price) : "",
     purchase_price: s?.purchase_price != null ? String(s.purchase_price) : "",
-    sale_price: s?.sale_price != null ? String(s.sale_price) : "",
     purchased_at: s?.purchased_at ?? "",
-    sold_at: s?.sold_at ?? "",
     notes: s?.notes ?? "",
   };
 }
@@ -98,18 +101,18 @@ export function LooseStoneFormDialog({
 
     const payload = {
       image_urls: form.image_urls,
+      certificate_urls: form.certificate_urls,
       material: form.material || null,
       gemstone_category: form.gemstone_category || null,
       origin: form.origin || null,
       certificate: form.certificate || null,
       size: form.size || null,
       weight: form.weight === "" ? null : Number(form.weight),
+      weight_unit: form.weight_unit || null,
       price: form.price === "" ? 0 : Number(form.price),
       purchase_price:
         form.purchase_price === "" ? 0 : Number(form.purchase_price),
-      sale_price: form.sale_price === "" ? 0 : Number(form.sale_price),
       purchased_at: form.purchased_at || null,
-      sold_at: form.sold_at || null,
       notes: form.notes || null,
     };
 
@@ -166,6 +169,13 @@ export function LooseStoneFormDialog({
               />
             </div>
             <div className="space-y-2">
+              <Label>认证报告</Label>
+              <FileUpload
+                value={form.certificate_urls}
+                onChange={(urls) => set("certificate_urls", urls)}
+              />
+            </div>
+            <div className="space-y-2">
               <Label htmlFor="ls-material">产品名称</Label>
               <Input
                 id="ls-material"
@@ -218,18 +228,31 @@ export function LooseStoneFormDialog({
                   placeholder="如：10×8mm"
                 />
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="ls-weight">克重 (g)</Label>
-                <Input
-                  id="ls-weight"
-                  type="number"
-                  step="0.001"
-                  value={form.weight}
-                  onChange={(e) => set("weight", e.target.value)}
-                />
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-2">
+                  <Label htmlFor="ls-weight">重量</Label>
+                  <Input
+                    id="ls-weight"
+                    type="number"
+                    step="0.001"
+                    value={form.weight}
+                    onChange={(e) => set("weight", e.target.value)}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="ls-weight-unit">单位</Label>
+                  <Combobox
+                    id="ls-weight-unit"
+                    value={form.weight_unit}
+                    onChange={(v) => set("weight_unit", v)}
+                    options={WEIGHT_UNIT_OPTIONS}
+                    placeholder="克(g)"
+                    maxLength={20}
+                  />
+                </div>
               </div>
             </div>
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <div className="space-y-2">
                 <Label htmlFor="ls-price">价格 (¥)</Label>
                 <Input
@@ -250,16 +273,6 @@ export function LooseStoneFormDialog({
                   onChange={(e) => set("purchase_price", e.target.value)}
                 />
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="ls-sale-price">售出价 (¥)</Label>
-                <Input
-                  id="ls-sale-price"
-                  type="number"
-                  step="0.01"
-                  value={form.sale_price}
-                  onChange={(e) => set("sale_price", e.target.value)}
-                />
-              </div>
             </div>
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <div className="space-y-2">
@@ -269,15 +282,6 @@ export function LooseStoneFormDialog({
                   type="date"
                   value={form.purchased_at}
                   onChange={(e) => set("purchased_at", e.target.value)}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="ls-sold-at">卖出时间</Label>
-                <Input
-                  id="ls-sold-at"
-                  type="date"
-                  value={form.sold_at}
-                  onChange={(e) => set("sold_at", e.target.value)}
                 />
               </div>
             </div>

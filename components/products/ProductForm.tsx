@@ -2,12 +2,13 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { LooseStone, Product, ProductInput, SaleStatus } from "@/types";
+import { LooseStone, Product, ProductInput } from "@/types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
+import { NumberInput } from "@/components/ui/NumberInput";
 import {
   Select,
   SelectContent,
@@ -16,6 +17,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { ImageUpload } from "@/components/ui/ImageUpload";
+import { FileUpload } from "@/components/ui/FileUpload";
 import { Combobox } from "@/components/ui/Combobox";
 import { formatCurrency } from "@/lib/utils";
 import {
@@ -26,11 +28,7 @@ import {
 
 const ORIGIN_PRESETS = ["深圳水贝", "香港", "广州番禺", "周大福", "其他"];
 
-const STATUS_OPTIONS: { value: SaleStatus; label: string }[] = [
-  { value: "in_stock", label: "在库" },
-  { value: "sold", label: "已售" },
-  { value: "consignment", label: "借售" },
-];
+const WEIGHT_UNIT_OPTIONS = ["克(g)", "克拉(ct)"];
 
 interface ProductFormProps {
   initial?: Product;
@@ -39,8 +37,10 @@ interface ProductFormProps {
 function toFormState(p?: Product): ProductInput {
   return {
     image_urls: p?.image_urls ?? [],
+    certificate_urls: p?.certificate_urls ?? [],
     name: p?.name ?? "",
     total_weight: p?.total_weight ?? null,
+    weight_unit: p?.weight_unit ?? "克(g)",
     size: p?.size ?? "",
     origin: p?.origin ?? "",
     inlaid_stones: p?.inlaid_stones ?? "",
@@ -49,6 +49,7 @@ function toFormState(p?: Product): ProductInput {
     source_loose_stone_id: p?.source_loose_stone_id ?? null,
     price: p?.price ?? 0,
     purchase_price: p?.purchase_price ?? 0,
+    sale_price: p?.sale_price ?? 0,
     sale_status: p?.sale_status ?? "in_stock",
     settled_amount: p?.settled_amount ?? 0,
     is_consignment: p?.is_consignment ?? false,
@@ -110,18 +111,6 @@ export function ProductForm({ initial }: ProductFormProps) {
     if (!checked) set("source_loose_stone_id", null);
   }
 
-  function handleStatusChange(status: SaleStatus) {
-    setForm((prev) => ({
-      ...prev,
-      sale_status: status,
-      is_consignment: status === "consignment",
-      sold_at:
-        status !== "in_stock" && !prev.sold_at
-          ? new Date().toISOString().slice(0, 10)
-          : prev.sold_at,
-    }));
-  }
-
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
@@ -139,9 +128,11 @@ export function ProductForm({ initial }: ProductFormProps) {
         form.total_weight === null || (form.total_weight as unknown) === ""
           ? null
           : Number(form.total_weight),
-      price: Number(form.price),
-      purchase_price: Number(form.purchase_price),
-      settled_amount: Number(form.settled_amount),
+      price: Number(form.price || 0),
+      purchase_price: Number(form.purchase_price || 0),
+      sale_price: Number(form.sale_price || 0),
+      settled_amount: Number(form.settled_amount || 0),
+      weight_unit: form.weight_unit || null,
       size: form.size || null,
       origin: form.origin || null,
       inlaid_stones: form.inlaid_stones || null,
@@ -176,8 +167,6 @@ export function ProductForm({ initial }: ProductFormProps) {
     router.refresh();
   }
 
-  const showSoldDate = form.sale_status !== "in_stock";
-
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
       {/* 图片 */}
@@ -186,6 +175,15 @@ export function ProductForm({ initial }: ProductFormProps) {
         <ImageUpload
           value={form.image_urls}
           onChange={(urls) => set("image_urls", urls)}
+        />
+      </div>
+
+      {/* 认证报告 */}
+      <div className="space-y-2">
+        <Label>认证报告</Label>
+        <FileUpload
+          value={form.certificate_urls}
+          onChange={(urls) => set("certificate_urls", urls)}
         />
       </div>
 
@@ -203,18 +201,24 @@ export function ProductForm({ initial }: ProductFormProps) {
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="total_weight">总重量 (g)</Label>
-          <Input
+          <Label htmlFor="total_weight">重量</Label>
+          <NumberInput
             id="total_weight"
-            type="number"
             step="0.001"
-            value={form.total_weight ?? ""}
-            onChange={(e) =>
-              set(
-                "total_weight",
-                e.target.value === "" ? null : Number(e.target.value)
-              )
-            }
+            value={form.total_weight}
+            onChange={(v) => set("total_weight", v)}
+          />
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="weight_unit">重量单位</Label>
+          <Combobox
+            id="weight_unit"
+            value={form.weight_unit ?? ""}
+            onChange={(v) => set("weight_unit", v || null)}
+            options={WEIGHT_UNIT_OPTIONS}
+            placeholder="如：克(g) / 克拉(ct)"
+            maxLength={20}
           />
         </div>
 
@@ -280,35 +284,42 @@ export function ProductForm({ initial }: ProductFormProps) {
 
         <div className="space-y-2">
           <Label htmlFor="price">价格 (¥) *</Label>
-          <Input
+          <NumberInput
             id="price"
-            type="number"
             step="0.01"
             value={form.price}
-            onChange={(e) => set("price", Number(e.target.value))}
+            onChange={(v) => set("price", v ?? 0)}
             required
           />
         </div>
 
         <div className="space-y-2">
           <Label htmlFor="purchase_price">进货价 (¥)</Label>
-          <Input
+          <NumberInput
             id="purchase_price"
-            type="number"
             step="0.01"
             value={form.purchase_price}
-            onChange={(e) => set("purchase_price", Number(e.target.value))}
+            onChange={(v) => set("purchase_price", v ?? 0)}
+          />
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="sale_price">出售价 (¥)</Label>
+          <NumberInput
+            id="sale_price"
+            step="0.01"
+            value={form.sale_price}
+            onChange={(v) => set("sale_price", v ?? 0)}
           />
         </div>
 
         <div className="space-y-2">
           <Label htmlFor="settled_amount">结款 (¥)</Label>
-          <Input
+          <NumberInput
             id="settled_amount"
-            type="number"
             step="0.01"
             value={form.settled_amount}
-            onChange={(e) => set("settled_amount", Number(e.target.value))}
+            onChange={(v) => set("settled_amount", v ?? 0)}
           />
         </div>
 
@@ -328,27 +339,6 @@ export function ProductForm({ initial }: ProductFormProps) {
           <div className="flex h-10 items-center rounded-md border bg-green-50 px-3 text-sm font-medium text-green-700">
             {formatCurrency(profit)}
           </div>
-        </div>
-      </div>
-
-      {/* 销售状态 */}
-      <div className="space-y-2">
-        <Label>销售情况</Label>
-        <div className="flex flex-wrap gap-2">
-          {STATUS_OPTIONS.map((opt) => (
-            <button
-              key={opt.value}
-              type="button"
-              onClick={() => handleStatusChange(opt.value)}
-              className={`rounded-md border px-4 py-2 text-sm transition-colors ${
-                form.sale_status === opt.value
-                  ? "border-amber-500 bg-amber-100 text-amber-900"
-                  : "border-gray-200 bg-white text-gray-600 hover:bg-gray-50"
-              }`}
-            >
-              {opt.label}
-            </button>
-          ))}
         </div>
       </div>
 
@@ -410,17 +400,6 @@ export function ProductForm({ initial }: ProductFormProps) {
             onChange={(e) => set("purchased_at", e.target.value || null)}
           />
         </div>
-        {showSoldDate && (
-          <div className="space-y-2">
-            <Label htmlFor="sold_at">出售时间</Label>
-            <Input
-              id="sold_at"
-              type="date"
-              value={form.sold_at ?? ""}
-              onChange={(e) => set("sold_at", e.target.value || null)}
-            />
-          </div>
-        )}
       </div>
 
       <div className="space-y-2">

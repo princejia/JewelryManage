@@ -180,6 +180,41 @@ CREATE INDEX IF NOT EXISTS idx_product_returns_sale ON product_returns(sale_id);
 CREATE INDEX IF NOT EXISTS idx_product_returns_returned_at ON product_returns(returned_at);
 
 -- ------------------------------------------------------------
+-- 新增功能字段：重量单位 / 出售价 / 认证报告 / 裸石销售状态（幂等）
+-- ------------------------------------------------------------
+ALTER TABLE products     ADD COLUMN IF NOT EXISTS weight_unit      VARCHAR(20) DEFAULT '克(g)';
+ALTER TABLE products     ADD COLUMN IF NOT EXISTS sale_price       DECIMAL(12,2) DEFAULT 0;
+ALTER TABLE products     ADD COLUMN IF NOT EXISTS certificate_urls TEXT[] DEFAULT '{}';
+
+ALTER TABLE loose_stones ADD COLUMN IF NOT EXISTS weight_unit      VARCHAR(20) DEFAULT '克(g)';
+ALTER TABLE loose_stones ADD COLUMN IF NOT EXISTS certificate_urls TEXT[] DEFAULT '{}';
+ALTER TABLE loose_stones ADD COLUMN IF NOT EXISTS sale_status      sale_status_enum DEFAULT 'in_stock';
+
+-- 销售记录支持裸石（product_id 已可空，新增 loose_stone_id）
+ALTER TABLE product_sales ADD COLUMN IF NOT EXISTS loose_stone_id UUID REFERENCES loose_stones(id) ON DELETE CASCADE;
+CREATE INDEX IF NOT EXISTS idx_product_sales_loose_stone ON product_sales(loose_stone_id);
+
+-- ------------------------------------------------------------
+-- 借调记录表（产品与裸石均可借调）
+-- ------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS item_loans (
+  id               UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  product_id       UUID REFERENCES products(id) ON DELETE CASCADE,
+  loose_stone_id   UUID REFERENCES loose_stones(id) ON DELETE CASCADE,
+  borrower_name    VARCHAR(100) NOT NULL,
+  borrower_contact VARCHAR(100),
+  loaned_at        DATE NOT NULL DEFAULT CURRENT_DATE,
+  due_at           DATE,
+  returned_at      DATE,
+  notes            TEXT,
+  created_at       TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_item_loans_product ON item_loans(product_id);
+CREATE INDEX IF NOT EXISTS idx_item_loans_loose_stone ON item_loans(loose_stone_id);
+CREATE INDEX IF NOT EXISTS idx_item_loans_returned ON item_loans(returned_at);
+
+-- ------------------------------------------------------------
 -- 自动更新 updated_at 触发器
 -- ------------------------------------------------------------
 CREATE OR REPLACE FUNCTION update_updated_at()
@@ -250,6 +285,7 @@ ALTER TABLE customers ENABLE ROW LEVEL SECURITY;
 ALTER TABLE product_sales ENABLE ROW LEVEL SECURITY;
 ALTER TABLE loose_stones ENABLE ROW LEVEL SECURITY;
 ALTER TABLE product_returns ENABLE ROW LEVEL SECURITY;
+ALTER TABLE item_loans ENABLE ROW LEVEL SECURITY;
 
 DROP POLICY IF EXISTS "Authenticated users can read products" ON products;
 CREATE POLICY "Authenticated users can read products"
@@ -279,6 +315,11 @@ CREATE POLICY "Authenticated users can manage loose stones"
 DROP POLICY IF EXISTS "Authenticated users can manage returns" ON product_returns;
 CREATE POLICY "Authenticated users can manage returns"
   ON product_returns FOR ALL
+
+DROP POLICY IF EXISTS "Authenticated users can manage loans" ON item_loans;
+CREATE POLICY "Authenticated users can manage loans"
+  ON item_loans FOR ALL
+  TO authenticated USING (true) WITH CHECK (true);
   TO authenticated USING (true) WITH CHECK (true);
 
 -- ============================================================

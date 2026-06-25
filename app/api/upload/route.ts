@@ -4,15 +4,29 @@ import { createServerClient } from "@/lib/supabase-server";
 export const runtime = "nodejs";
 
 const BUCKET = "product-images";
-const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/webp"];
-const MAX_SIZE = 5 * 1024 * 1024;
+const IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp"];
+const DOC_TYPES = [
+  "application/pdf",
+  "application/msword",
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+];
+const ALLOWED_TYPES = [...IMAGE_TYPES, ...DOC_TYPES];
+const MAX_SIZE = 10 * 1024 * 1024;
 
 /** 确保存储桶存在，不存在则创建为公开桶 */
 async function ensureBucket(
   supabase: ReturnType<typeof createServerClient>
 ): Promise<string | null> {
   const { data, error } = await supabase.storage.getBucket(BUCKET);
-  if (data) return null;
+  if (data) {
+    // 桶已存在：放宽允许的文件类型（兼容旧的仅图片限制）
+    await supabase.storage.updateBucket(BUCKET, {
+      public: true,
+      fileSizeLimit: MAX_SIZE,
+      allowedMimeTypes: ALLOWED_TYPES,
+    });
+    return null;
+  }
   // getBucket 失败通常是桶不存在，尝试创建
   const { error: createError } = await supabase.storage.createBucket(BUCKET, {
     public: true,
@@ -45,16 +59,16 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "未提供文件" }, { status: 400 });
   }
 
-  // 限制：只允许图片，最大 5MB
+  // 限制：图片或文档，最大 10MB
   if (!ALLOWED_TYPES.includes(file.type)) {
     return NextResponse.json(
-      { error: "只支持 JPG/PNG/WEBP 格式" },
+      { error: "只支持 JPG/PNG/WEBP 图片或 PDF/Word 文档" },
       { status: 400 }
     );
   }
   if (file.size > MAX_SIZE) {
     return NextResponse.json(
-      { error: "文件大小不能超过 5MB" },
+      { error: "文件大小不能超过 10MB" },
       { status: 400 }
     );
   }
@@ -71,8 +85,13 @@ export async function POST(req: NextRequest) {
 
   let { error } = await upload();
 
-  // 桶不存在时自动创建后重试一次
-  if (error && /bucket|not found|does not exist/i.test(error.message)) {
+  // 桶不存在或类型受限时自动创建/放宽后重试一次
+  if (
+    error &&
+    /bucket|not found|does not exist|mime|not supported|allowed/i.test(
+      error.message
+    )
+  ) {
     const bucketError = await ensureBucket(supabase);
     if (bucketError) {
       return NextResponse.json(

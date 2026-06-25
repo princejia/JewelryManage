@@ -4,8 +4,10 @@ export const saleStatusEnum = z.enum(["in_stock", "sold", "consignment"]);
 
 export const productSchema = z.object({
   image_urls: z.array(z.string().url()).default([]),
+  certificate_urls: z.array(z.string().url()).default([]),
   name: z.string().min(1, "产品名称必填").max(255),
   total_weight: z.coerce.number().nonnegative().nullable().optional(),
+  weight_unit: z.string().max(20).nullable().optional(),
   size: z.string().max(100).nullable().optional(),
   origin: z.string().max(100).nullable().optional(),
   inlaid_stones: z.string().nullable().optional(),
@@ -14,6 +16,7 @@ export const productSchema = z.object({
   source_loose_stone_id: z.string().uuid().nullable().optional(),
   price: z.coerce.number().nonnegative("价格必须为非负数"),
   purchase_price: z.coerce.number().nonnegative().default(0),
+  sale_price: z.coerce.number().nonnegative().default(0),
   sale_status: saleStatusEnum.default("in_stock"),
   settled_amount: z.coerce.number().nonnegative().default(0),
   is_consignment: z.boolean().default(false),
@@ -27,15 +30,18 @@ export type ProductSchema = z.infer<typeof productSchema>;
 
 export const looseStoneSchema = z.object({
   image_urls: z.array(z.string().url()).default([]),
+  certificate_urls: z.array(z.string().url()).default([]),
   size: z.string().max(100).nullable().optional(),
   material: z.string().max(100).nullable().optional(),
   weight: z.coerce.number().nonnegative().nullable().optional(),
+  weight_unit: z.string().max(20).nullable().optional(),
   price: z.coerce.number().nonnegative().default(0),
   gemstone_category: z.string().max(100).nullable().optional(),
   origin: z.string().max(100).nullable().optional(),
   certificate: z.string().max(255).nullable().optional(),
   purchase_price: z.coerce.number().nonnegative().default(0),
-  sale_price: z.coerce.number().nonnegative().default(0),
+  sale_price: z.coerce.number().nonnegative().optional(),
+  sale_status: saleStatusEnum.optional(),
   purchased_at: z.string().nullable().optional(),
   sold_at: z.string().nullable().optional(),
   notes: z.string().nullable().optional(),
@@ -52,15 +58,39 @@ export const customerSchema = z.object({
 
 export type CustomerSchema = z.infer<typeof customerSchema>;
 
-export const saleSchema = z.object({
-  product_id: z.string().uuid(),
-  customer_id: z.string().uuid().nullable().optional(),
-  sale_price: z.coerce.number().nonnegative(),
-  payment_method: z.string().max(50).nullable().optional(),
-  sold_at: z.string().optional(),
-});
+export const saleSchema = z
+  .object({
+    product_id: z.string().uuid().nullable().optional(),
+    loose_stone_id: z.string().uuid().nullable().optional(),
+    customer_id: z.string().uuid().nullable().optional(),
+    sale_price: z.coerce.number().nonnegative(),
+    payment_method: z.string().max(50).nullable().optional(),
+    sold_at: z.string().optional(),
+    sale_status: z.enum(["sold", "consignment"]).default("sold"),
+  })
+  .refine((d) => d.product_id || d.loose_stone_id, {
+    message: "需选择产品或裸石",
+  });
 
 export type SaleSchema = z.infer<typeof saleSchema>;
+
+export const loanBaseSchema = z.object({
+  product_id: z.string().uuid().nullable().optional(),
+  loose_stone_id: z.string().uuid().nullable().optional(),
+  borrower_name: z.string().min(1, "借出人必填").max(100),
+  borrower_contact: z.string().max(100).nullable().optional(),
+  loaned_at: z.string().optional(),
+  due_at: z.string().nullable().optional(),
+  returned_at: z.string().nullable().optional(),
+  notes: z.string().nullable().optional(),
+});
+
+export const loanSchema = loanBaseSchema.refine(
+  (d) => d.product_id || d.loose_stone_id,
+  { message: "需选择产品或裸石" }
+);
+
+export type LoanSchema = z.infer<typeof loanSchema>;
 
 export const returnSchema = z.object({
   sale_id: z.string().uuid().nullable().optional(),

@@ -41,8 +41,23 @@ export async function GET(req: NextRequest) {
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
+  // 附加派生状态：是否存在未归还的借调记录
+  const rows = (data ?? []) as Record<string, unknown>[];
+  if (rows.length > 0) {
+    const ids = rows.map((r) => r.id as string);
+    const { data: loans } = await supabase
+      .from("item_loans")
+      .select("product_id")
+      .is("returned_at", null)
+      .in("product_id", ids);
+    const loanedSet = new Set((loans ?? []).map((l) => l.product_id));
+    rows.forEach((r) => {
+      r.is_loaned = loanedSet.has(r.id);
+    });
+  }
+
   return NextResponse.json({
-    data,
+    data: rows,
     total: count,
     page,
     limit,

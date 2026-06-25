@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Plus } from "lucide-react";
-import { Product, Customer } from "@/types";
+import { Product, Customer, LooseStone } from "@/types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -26,15 +26,21 @@ import {
 const PAYMENT_METHODS = ["现金", "微信", "支付宝", "银行转账"];
 const NO_CUSTOMER = "__none__";
 
+type ItemType = "product" | "loose_stone";
+type SaleType = "sold" | "consignment";
+
 export function RecordSaleDialog() {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [products, setProducts] = useState<Product[]>([]);
+  const [stones, setStones] = useState<LooseStone[]>([]);
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const [productId, setProductId] = useState("");
+  const [itemType, setItemType] = useState<ItemType>("product");
+  const [saleType, setSaleType] = useState<SaleType>("sold");
+  const [itemId, setItemId] = useState("");
   const [customerId, setCustomerId] = useState(NO_CUSTOMER);
   const [salePrice, setSalePrice] = useState("");
   const [paymentMethod, setPaymentMethod] = useState("");
@@ -45,21 +51,48 @@ export function RecordSaleDialog() {
     fetch("/api/products?status=in_stock&limit=100", { cache: "no-store" })
       .then((r) => r.json())
       .then((j) => setProducts(j.data ?? []));
+    fetch("/api/loose-stones", { cache: "no-store" })
+      .then((r) => r.json())
+      .then((j) =>
+        setStones(
+          (j.data ?? []).filter((s: LooseStone) => s.sale_status !== "sold")
+        )
+      );
     fetch("/api/customers", { cache: "no-store" })
       .then((r) => r.json())
       .then((j) => setCustomers(j.data ?? []));
   }, [open]);
 
-  function handleProductChange(id: string) {
-    setProductId(id);
-    const p = products.find((x) => x.id === id);
-    if (p && !salePrice) setSalePrice(String(p.price));
+  function handleItemTypeChange(type: ItemType) {
+    setItemType(type);
+    setItemId("");
+    setSalePrice("");
+  }
+
+  function handleItemChange(id: string) {
+    setItemId(id);
+    if (itemType === "product") {
+      const p = products.find((x) => x.id === id);
+      if (p && !salePrice) setSalePrice(String(p.price));
+    } else {
+      const s = stones.find((x) => x.id === id);
+      if (s && !salePrice) setSalePrice(String(s.price));
+    }
+  }
+
+  function reset() {
+    setItemType("product");
+    setSaleType("sold");
+    setItemId("");
+    setCustomerId(NO_CUSTOMER);
+    setSalePrice("");
+    setPaymentMethod("");
   }
 
   async function handleSubmit() {
     setError(null);
-    if (!productId) {
-      setError("请选择产品");
+    if (!itemId) {
+      setError(itemType === "product" ? "请选择产品" : "请选择裸石");
       return;
     }
     if (!salePrice) {
@@ -71,11 +104,13 @@ export function RecordSaleDialog() {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        product_id: productId,
+        product_id: itemType === "product" ? itemId : null,
+        loose_stone_id: itemType === "loose_stone" ? itemId : null,
         customer_id: customerId === NO_CUSTOMER ? null : customerId,
         sale_price: Number(salePrice),
         payment_method: paymentMethod || null,
         sold_at: soldAt,
+        sale_status: saleType,
       }),
     });
     setSaving(false);
@@ -84,10 +119,7 @@ export function RecordSaleDialog() {
       setError(json.error || "保存失败");
       return;
     }
-    setProductId("");
-    setCustomerId(NO_CUSTOMER);
-    setSalePrice("");
-    setPaymentMethod("");
+    reset();
     setOpen(false);
     router.refresh();
   }
@@ -105,21 +137,71 @@ export function RecordSaleDialog() {
           <DialogTitle>登记销售</DialogTitle>
         </DialogHeader>
         <div className="space-y-3">
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-2">
+              <Label>物品类型</Label>
+              <Select
+                value={itemType}
+                onValueChange={(v) => handleItemTypeChange(v as ItemType)}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="product">产品</SelectItem>
+                  <SelectItem value="loose_stone">裸石</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label>销售方式</Label>
+              <Select
+                value={saleType}
+                onValueChange={(v) => setSaleType(v as SaleType)}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="sold">出售</SelectItem>
+                  <SelectItem value="consignment">借售</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
           <div className="space-y-2">
-            <Label>产品 *</Label>
-            <Select value={productId} onValueChange={handleProductChange}>
+            <Label>{itemType === "product" ? "产品 *" : "裸石 *"}</Label>
+            <Select value={itemId} onValueChange={handleItemChange}>
               <SelectTrigger>
-                <SelectValue placeholder="选择在库产品" />
+                <SelectValue
+                  placeholder={
+                    itemType === "product" ? "选择在库产品" : "选择在库裸石"
+                  }
+                />
               </SelectTrigger>
               <SelectContent>
-                {products.length === 0 ? (
+                {itemType === "product" ? (
+                  products.length === 0 ? (
+                    <SelectItem value="__empty__" disabled>
+                      无在库产品
+                    </SelectItem>
+                  ) : (
+                    products.map((p) => (
+                      <SelectItem key={p.id} value={p.id}>
+                        {p.name}（¥{Number(p.price).toLocaleString()}）
+                      </SelectItem>
+                    ))
+                  )
+                ) : stones.length === 0 ? (
                   <SelectItem value="__empty__" disabled>
-                    无在库产品
+                    无可售裸石
                   </SelectItem>
                 ) : (
-                  products.map((p) => (
-                    <SelectItem key={p.id} value={p.id}>
-                      {p.name}（¥{Number(p.price).toLocaleString()}）
+                  stones.map((s) => (
+                    <SelectItem key={s.id} value={s.id}>
+                      {(s.material || "裸石") +
+                        `（¥${Number(s.price).toLocaleString()}）`}
                     </SelectItem>
                   ))
                 )}

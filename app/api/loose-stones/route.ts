@@ -30,7 +30,33 @@ export async function GET(req: NextRequest) {
   const { data, error } = await query;
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-  return NextResponse.json({ data });
+
+  // 附加派生状态：是否已被产品使用 / 是否存在未归还的借调记录
+  const rows = (data ?? []) as Record<string, unknown>[];
+  if (rows.length > 0) {
+    const ids = rows.map((r) => r.id as string);
+    const [{ data: usedProducts }, { data: loans }] = await Promise.all([
+      supabase
+        .from("products")
+        .select("source_loose_stone_id")
+        .in("source_loose_stone_id", ids),
+      supabase
+        .from("item_loans")
+        .select("loose_stone_id")
+        .is("returned_at", null)
+        .in("loose_stone_id", ids),
+    ]);
+    const usedSet = new Set(
+      (usedProducts ?? []).map((p) => p.source_loose_stone_id)
+    );
+    const loanedSet = new Set((loans ?? []).map((l) => l.loose_stone_id));
+    rows.forEach((r) => {
+      r.is_used = usedSet.has(r.id);
+      r.is_loaned = loanedSet.has(r.id);
+    });
+  }
+
+  return NextResponse.json({ data: rows });
 }
 
 export async function POST(req: NextRequest) {

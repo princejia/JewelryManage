@@ -33,14 +33,24 @@ export function ProductCard({ product }: { product: Product }) {
             <h3 className="line-clamp-2 text-sm font-medium text-gray-900">
               {product.name}
             </h3>
-            <StatusBadge status={product.sale_status} />
+            <div className="flex shrink-0 flex-col items-end gap-1">
+              <StatusBadge status={product.sale_status} />
+              {product.is_loaned && (
+                <span className="inline-flex items-center rounded-full bg-orange-100 px-2 py-0.5 text-[11px] font-medium text-orange-700">
+                  借调中
+                </span>
+              )}
+            </div>
           </div>
           <p className="mt-1 text-lg font-bold text-amber-700">
             {formatCurrency(product.price)}
           </p>
           <div className="mt-2 flex flex-wrap gap-3 text-xs text-gray-500">
             {product.total_weight != null && (
-              <span>{product.total_weight}g</span>
+              <span>
+                {product.total_weight}
+                {product.weight_unit || "g"}
+              </span>
             )}
             {product.size && <span>{product.size}</span>}
             {product.origin && <span>{product.origin}</span>}
