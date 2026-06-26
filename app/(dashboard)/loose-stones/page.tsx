@@ -1,10 +1,12 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
-import { Plus, LayoutGrid, List, Loader2, Download } from "lucide-react";
+import { Plus, LayoutGrid, List, Loader2, Download, QrCode } from "lucide-react";
 import { LooseStone } from "@/types";
 import { Button } from "@/components/ui/button";
 import { exportLooseStonesToExcel } from "@/lib/export";
+import { printLabels } from "@/lib/labels";
+import { formatProductCode } from "@/lib/utils";
 import { LooseStoneCard } from "@/components/loose-stones/LooseStoneCard";
 import { LooseStoneTable } from "@/components/loose-stones/LooseStoneTable";
 import { LooseStoneFormDialog } from "@/components/loose-stones/LooseStoneFormDialog";
@@ -49,6 +51,23 @@ export default function LooseStonesPage() {
     const t = setTimeout(fetchStones, 300);
     return () => clearTimeout(t);
   }, [fetchStones]);
+
+  // 支持扫码跳转：URL 带 ?edit=<id> 时自动打开对应裸石的编辑弹窗
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const editId = params.get("edit");
+    if (!editId) return;
+    fetch(`/api/loose-stones/${editId}`, { cache: "no-store" })
+      .then((res) => res.json())
+      .then((json) => {
+        if (json.data) {
+          setEditing(json.data as LooseStone);
+          setOpen(true);
+        }
+      })
+      .catch(() => {});
+    window.history.replaceState(null, "", "/loose-stones");
+  }, []);
 
   function openCreate() {
     setEditing(null);
@@ -107,6 +126,23 @@ export default function LooseStonesPage() {
           >
             <Download className="h-4 w-4" />
             导出 Excel
+          </Button>
+          <Button
+            variant="outline"
+            onClick={() =>
+              printLabels(
+                stones.map((s) => ({
+                  id: s.id,
+                  code: s.code ?? formatProductCode("L", s.created_at),
+                  name: s.material || "未命名",
+                  type: "stone" as const,
+                })),
+              )
+            }
+            disabled={stones.length === 0}
+          >
+            <QrCode className="h-4 w-4" />
+            打印标签
           </Button>
           <Button onClick={openCreate}>
             <Plus className="h-4 w-4" />

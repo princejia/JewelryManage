@@ -38,8 +38,13 @@ export function ProductTable({ products }: { products: Product[] }) {
           ) : (
             products.map((p) => (
               <TableRow key={p.id} className="cursor-pointer">
-                <TableCell className="font-mono text-xs text-gray-500">
-                  {p.code ?? formatProductCode("P", p.created_at)}
+                <TableCell className="font-mono text-xs">
+                  <Link
+                    href={`/products/${p.id}`}
+                    className="text-gray-500 hover:text-amber-700"
+                  >
+                    {p.code ?? formatProductCode("P", p.created_at)}
+                  </Link>
                 </TableCell>
                 <TableCell>
                   <Link

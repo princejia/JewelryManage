@@ -2,12 +2,14 @@
 
 import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
-import { Plus, LayoutGrid, List, Loader2, Download } from "lucide-react";
+import { Plus, LayoutGrid, List, Loader2, Download, QrCode } from "lucide-react";
 import { Product, PaginatedResponse } from "@/types";
 import { Button } from "@/components/ui/button";
 import { ProductCard } from "@/components/products/ProductCard";
 import { ProductTable } from "@/components/products/ProductTable";
 import { exportProductsToExcel } from "@/lib/export";
+import { printLabels } from "@/lib/labels";
+import { formatProductCode } from "@/lib/utils";
 import {
   ProductFilters,
   ProductFilterState,
@@ -82,6 +84,23 @@ export default function ProductsPage() {
           >
             <Download className="h-4 w-4" />
             导出 Excel
+          </Button>
+          <Button
+            variant="outline"
+            onClick={() =>
+              printLabels(
+                products.map((p) => ({
+                  id: p.id,
+                  code: p.code ?? formatProductCode("P", p.created_at),
+                  name: p.name,
+                  type: "product" as const,
+                })),
+              )
+            }
+            disabled={products.length === 0}
+          >
+            <QrCode className="h-4 w-4" />
+            打印标签
           </Button>
           <Button asChild>
             <Link href="/products/new">

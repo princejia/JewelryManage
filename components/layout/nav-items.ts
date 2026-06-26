@@ -6,6 +6,7 @@ import {
   Users,
   BarChart3,
   ArrowLeftRight,
+  ScanLine,
   type LucideIcon,
 } from "lucide-react";
 
@@ -19,6 +20,7 @@ export const NAV_ITEMS: NavItem[] = [
   { href: "/", label: "仪表盘", icon: LayoutDashboard },
   { href: "/products", label: "产品管理", icon: Gem },
   { href: "/loose-stones", label: "裸石管理", icon: Diamond },
+  { href: "/scan", label: "扫码查询", icon: ScanLine },
   { href: "/sales", label: "销售记录", icon: Receipt },
   { href: "/loans", label: "借调管理", icon: ArrowLeftRight },
   { href: "/customers", label: "客户管理", icon: Users },
