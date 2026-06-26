@@ -82,7 +82,7 @@ export async function printLabels(items: LabelItem[]): Promise<void> {
     .label {
       width: 48mm;
       height: 30mm;
-      border: 1px dashed #ccc;
+      border: 1px dashed #999;
       border-radius: 4px;
       padding: 2mm;
       display: flex;
@@ -128,7 +128,11 @@ export async function printLabels(items: LabelItem[]): Promise<void> {
     @media print {
       body { padding: 0; }
       .toolbar { display: none; }
-      .label { border-color: transparent; }
+      .label {
+        border: 1px dashed #999;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+      }
     }
   </style>
 </head>
