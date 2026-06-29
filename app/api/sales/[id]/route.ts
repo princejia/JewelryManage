@@ -36,7 +36,12 @@ export async function PATCH(
 
   const { data, error } = await supabase
     .from("product_sales")
-    .update(parsed.data)
+    .update({
+      customer_id: parsed.data.customer_id,
+      sale_price: parsed.data.sale_price,
+      payment_method: parsed.data.payment_method,
+      sold_at: parsed.data.sold_at,
+    })
     .eq("id", params.id)
     .select()
     .single();
