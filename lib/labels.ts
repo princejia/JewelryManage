@@ -23,12 +23,77 @@ const LABEL_W = 48;
 const LABEL_H = 30;
 const MARGIN = 8;
 const GAP = 4;
-const QR_SIZE = 22;
+const PX_PER_MM = 8; // 画布渲染精度（mm → px）
+
+function loadImage(src: string): Promise<HTMLImageElement> {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => resolve(img);
+    img.onerror = reject;
+    img.src = src;
+  });
+}
+
+/** 折行文本，超出宽度自动换行（中文逐字判断）。 */
+function wrapText(
+  ctx: CanvasRenderingContext2D,
+  text: string,
+  maxWidth: number,
+  maxLines: number,
+): string[] {
+  const lines: string[] = [];
+  let line = "";
+  for (const ch of text) {
+    if (ctx.measureText(line + ch).width > maxWidth && line) {
+      lines.push(line);
+      line = ch;
+      if (lines.length >= maxLines - 1) break;
+    } else {
+      line += ch;
+    }
+  }
+  if (line && lines.length < maxLines) lines.push(line);
+  return lines;
+}
+
+/**
+ * 将单个标签渲染到 canvas（使用浏览器字体，支持中文，避免 PDF 内置字体乱码）。
+ * 返回 PNG DataURL，再整体嵌入 PDF。
+ */
+async function renderLabelImage(qrDataUrl: string, code: string, name: string): Promise<string> {
+  const w = LABEL_W * PX_PER_MM;
+  const h = LABEL_H * PX_PER_MM;
+  const canvas = document.createElement("canvas");
+  canvas.width = w;
+  canvas.height = h;
+  const ctx = canvas.getContext("2d")!;
+  ctx.fillStyle = "#fff";
+  ctx.fillRect(0, 0, w, h);
+
+  // 二维码
+  const qrSize = 22 * PX_PER_MM;
+  const qrImg = await loadImage(qrDataUrl);
+  ctx.drawImage(qrImg, 3 * PX_PER_MM, (h - qrSize) / 2, qrSize, qrSize);
+
+  // 文本
+  const textX = (3 + 22 + 3) * PX_PER_MM;
+  const textW = w - textX - 3 * PX_PER_MM;
+  ctx.textBaseline = "top";
+  ctx.fillStyle = "#5a5a5a";
+  ctx.font = "600 11px 'Microsoft YaHei', sans-serif";
+  ctx.fillText(code, textX, 7 * PX_PER_MM, textW);
+  ctx.fillStyle = "#111";
+  ctx.font = "700 14px 'Microsoft YaHei', sans-serif";
+  const nameLines = wrapText(ctx, name, textW, 3);
+  nameLines.forEach((ln, i) => ctx.fillText(ln, textX, (12 + i * 5) * PX_PER_MM));
+
+  return canvas.toDataURL("image/png");
+}
 
 /**
  * 为给定的产品/裸石生成标签 PDF 并下载保存。
  * 每个标签包含：二维码（编码展示页链接）、编号、名称，按 A4 网格排版，
- * 标签带虚线边框作为裁剪参考线。
+ * 标签带虚线边框作为裁剪参考线。中文文本通过 canvas 渲染，避免乱码。
  */
 export async function saveLabelsPdf(items: LabelItem[]): Promise<void> {
   if (items.length === 0) return;
@@ -57,24 +122,14 @@ export async function saveLabelsPdf(items: LabelItem[]): Promise<void> {
     doc.roundedRect(x, y, LABEL_W, LABEL_H, 1, 1);
     doc.setLineDashPattern([], 0);
 
-    // 二维码
+    // 二维码 + 文本整体渲染为图片（中文不乱码）
     const qr = await QRCode.toDataURL(buildQrPayload(item, origin), {
       margin: 0,
       width: 240,
       errorCorrectionLevel: "M",
     });
-    const qrY = y + (LABEL_H - QR_SIZE) / 2;
-    doc.addImage(qr, "PNG", x + 3, qrY, QR_SIZE, QR_SIZE);
-
-    // 文本区
-    const textX = x + 3 + QR_SIZE + 3;
-    const textW = LABEL_W - (3 + QR_SIZE + 3) - 3;
-    doc.setTextColor(90);
-    doc.setFontSize(8);
-    doc.text(doc.splitTextToSize(item.code, textW), textX, y + 11);
-    doc.setTextColor(17);
-    doc.setFontSize(10);
-    doc.text(doc.splitTextToSize(item.name, textW), textX, y + 18);
+    const labelImg = await renderLabelImage(qr, item.code, item.name);
+    doc.addImage(labelImg, "PNG", x, y, LABEL_W, LABEL_H);
   }
 
   doc.save(`labels-${new Date().toISOString().slice(0, 10)}.pdf`);
