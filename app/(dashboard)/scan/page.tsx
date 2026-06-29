@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Loader2, ScanLine, X } from "lucide-react";
+import { Loader2, ScanLine, X, Image as ImageIcon } from "lucide-react";
 import { Html5Qrcode } from "html5-qrcode";
 import { Button } from "@/components/ui/button";
 
@@ -44,6 +44,7 @@ function resolveTarget(value: string): string | null {
 export default function ScanPage() {
   const router = useRouter();
   const scannerRef = useRef<Html5Qrcode | null>(null);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
   const handledRef = useRef(false);
   const [scanning, setScanning] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -80,8 +81,15 @@ export default function ScanPage() {
       const scanner = new Html5Qrcode(SCANNER_ID);
       scannerRef.current = scanner;
       await scanner.start(
-        { facingMode: "environment" },
-        { fps: 10, qrbox: { width: 220, height: 220 } },
+        // 高分辨率 + 连续对焦，改善手机扫描清晰度
+        {
+          facingMode: "environment",
+          width: { ideal: 1920 },
+          height: { ideal: 1080 },
+          advanced: [{ focusMode: "continuous" }],
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        } as any,
+        { fps: 10, qrbox: { width: 260, height: 260 } },
         (decodedText) => {
           const target = resolveTarget(decodedText);
           if (target) {
@@ -94,6 +102,18 @@ export default function ScanPage() {
           // 单帧未识别，忽略
         },
       );
+      // 启动后尝试启用连续对焦（部分机型默认不开启）
+      try {
+        const track = scanner.getRunningTrackSettings?.();
+        if (track) {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          await scanner.applyVideoConstraints({
+            advanced: [{ focusMode: "continuous" }],
+          } as any);
+        }
+      } catch {
+        // 机型不支持对焦约束，忽略
+      }
       setScanning(true);
     } catch (e) {
       setError(
@@ -102,6 +122,27 @@ export default function ScanPage() {
       setScanning(false);
     }
   }, [navigate, stopScanner]);
+
+  // 用手机原生相机拍照/选图后解码（原生相机对焦更好，识别更稳）
+  const handleFile = useCallback(
+    async (file: File) => {
+      setError(null);
+      handledRef.current = false;
+      await stopScanner();
+      try {
+        const scanner = new Html5Qrcode(SCANNER_ID);
+        const decodedText = await scanner.scanFile(file, false);
+        scanner.clear();
+        const target = resolveTarget(decodedText);
+        if (target) navigate(target);
+        else setError(`无法识别的二维码：${decodedText}`);
+      } catch {
+        setError("未能从图片中识别二维码，请让二维码清晰居中后重试。");
+        startScanner();
+      }
+    },
+    [navigate, startScanner, stopScanner],
+  );
 
   // 手机相机扫码会打开 /scan?t=..&id=..，此时直接解析并跳转，无需开启摄像头。
   useEffect(() => {
@@ -160,7 +201,27 @@ export default function ScanPage() {
                 开始扫描
               </Button>
             )}
+            <Button variant="outline" onClick={() => fileInputRef.current?.click()}>
+              <ImageIcon className="h-4 w-4" />
+              拍照识别
+            </Button>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              capture="environment"
+              className="hidden"
+              onChange={(e) => {
+                const f = e.target.files?.[0];
+                if (f) handleFile(f);
+                e.target.value = "";
+              }}
+            />
           </div>
+
+          <p className="text-xs text-gray-400">
+            对焦困难时，点击「拍照识别」用手机相机拍下二维码，识别更稳定。
+          </p>
         </>
       )}
     </div>
