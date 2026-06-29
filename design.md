@@ -74,8 +74,8 @@
 | purchase_price | 进货价(¥) | DECIMAL(12,2) | 购入成本，用于计算利润 |
 | sale_price | 出售价(¥) | DECIMAL(12,2) | 真实成交出售价格，销售时回写 |
 | sale_status | 销售情况 | ENUM | in_stock（在库）/ sold（已售）/ consignment（借售），在【销售管理】中变更 |
-| settled_amount | 结款(¥) | DECIMAL(12,2) | 已收款金额 |
-| unsettled_amount | 未结款(¥) | DECIMAL(12,2) | **自动计算** = price - settled_amount（仅对借售展示，在库/已售不显示） |
+| settled_amount | 结款(¥) | DECIMAL(12,2) | 已收款金额；【出售】=成交价，【借售】=0 |
+| unsettled_amount | 未结款(¥) | DECIMAL(12,2) | **自动计算** = price - settled_amount（仅对借售展示，在库/已售不显示）。借售已结款=0，故未结款=整件标价 |
 | is_consignment | 借售 | BOOLEAN | 是否为借售/寄售模式 |
 | is_loose_stone | 裸石 | BOOLEAN | 是否为裸石（未镶嵌） |
 | profit | 利润(¥) | DECIMAL(12,2) | **自动计算** = price - purchase_price |
@@ -111,7 +111,7 @@
 | sold_at | 成交时间 | DATE | 实际售出日期 |
 | created_at | 记录时间 | TIMESTAMPTZ | 自动设置 |
 
-> 销售记录同时支持**产品**与**裸石**：`product_id` 与 `loose_stone_id` 二者填其一。出售方式支持【出售】与【借售】，提交后自动回写对应物品的销售状态与出售价。
+> 销售记录同时支持**产品**与**裸石**：`product_id` 与 `loose_stone_id` 二者填其一。出售方式支持【出售】与【借售】，提交后自动回写对应物品的销售状态与出售价。【出售】结款=成交价（未结款 0）；【借售】结款=0，未结款=整件标价。
 
 ### 2.4 辅助表：loose_stones（裸石表）
 
