@@ -13,8 +13,12 @@ export async function middleware(req: NextRequest) {
     data: { session },
   } = await supabase.auth.getSession();
 
-  // 未登录用户重定向到登录页
-  if (!session && !req.nextUrl.pathname.startsWith("/login")) {
+  // 未登录用户重定向到登录页（扫码公开展示页 /v 除外）
+  if (
+    !session &&
+    !req.nextUrl.pathname.startsWith("/login") &&
+    !req.nextUrl.pathname.startsWith("/v/")
+  ) {
     return NextResponse.redirect(new URL("/login", req.url));
   }
 

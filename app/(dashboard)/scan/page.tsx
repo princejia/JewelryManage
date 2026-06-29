@@ -15,8 +15,16 @@ function resolveTarget(value: string): string | null {
 
   try {
     const url = new URL(value);
-    t = url.searchParams.get("t");
-    id = url.searchParams.get("id");
+    // 新版：/v/<p|s>/<id>
+    const m = url.pathname.match(/\/v\/([ps])\/([^/]+)$/i);
+    if (m) {
+      t = m[1].toLowerCase();
+      id = decodeURIComponent(m[2]);
+    } else {
+      // 兼容旧版：/scan?t=p&id=xxx
+      t = url.searchParams.get("t");
+      id = url.searchParams.get("id");
+    }
   } catch {
     // 兼容纯文本格式：p:<id> / s:<id>
     const m = value.match(/^([ps]):(.+)$/i);
@@ -27,6 +35,7 @@ function resolveTarget(value: string): string | null {
   }
 
   if (!id) return null;
+  // 已登录员工：直接进入编辑页
   if (t === "p") return `/products/${id}`;
   if (t === "s") return `/loose-stones?edit=${encodeURIComponent(id)}`;
   return null;

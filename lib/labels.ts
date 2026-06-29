@@ -17,12 +17,13 @@ function escapeHtml(value: string): string {
 }
 
 /**
- * 生成二维码内容：指向应用内的扫码解析页，便于手机相机直接扫描跳转，
- * 同时应用内扫描器也可解析。p = 产品，s = 裸石。
+ * 生成二维码内容：指向公开展示页 /v/<p|s>/<id>。
+ * - 未登录（手机相机直扫）：进入清新展示页（不含价格）。
+ * - 已登录：自动跳转到对应编辑页。
  */
 function buildQrPayload(item: LabelItem, origin: string): string {
   const t = item.type === "product" ? "p" : "s";
-  return `${origin}/scan?t=${t}&id=${encodeURIComponent(item.id)}`;
+  return `${origin}/v/${t}/${encodeURIComponent(item.id)}`;
 }
 
 /**
