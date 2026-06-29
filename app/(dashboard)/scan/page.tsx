@@ -77,50 +77,64 @@ export default function ScanPage() {
   const startScanner = useCallback(async () => {
     setError(null);
     handledRef.current = false;
-    try {
-      const scanner = new Html5Qrcode(SCANNER_ID);
-      scannerRef.current = scanner;
-      await scanner.start(
-        // 高分辨率 + 连续对焦，改善手机扫描清晰度
-        {
-          facingMode: "environment",
-          width: { ideal: 1920 },
-          height: { ideal: 1080 },
-          advanced: [{ focusMode: "continuous" }],
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        } as any,
-        { fps: 10, qrbox: { width: 260, height: 260 } },
-        (decodedText) => {
-          const target = resolveTarget(decodedText);
-          if (target) {
-            stopScanner().finally(() => navigate(target));
-          } else {
-            setError(`无法识别的二维码：${decodedText}`);
-          }
-        },
-        () => {
-          // 单帧未识别，忽略
-        },
+
+    if (!window.isSecureContext) {
+      setError(
+        "浏览器仅在 HTTPS 或 localhost 下允许使用摄像头。请用 https 地址访问，或使用下方「拍照识别」。",
       );
-      // 启动后尝试启用连续对焦（部分机型默认不开启）
+      return;
+    }
+    if (!navigator.mediaDevices?.getUserMedia) {
+      setError("当前浏览器不支持摄像头，请使用下方「拍照识别」。");
+      return;
+    }
+
+    const onDecode = (decodedText: string) => {
+      const target = resolveTarget(decodedText);
+      if (target) {
+        stopScanner().finally(() => navigate(target));
+      } else {
+        setError(`无法识别的二维码：${decodedText}`);
+      }
+    };
+    const cfg = { fps: 10, qrbox: { width: 260, height: 260 } };
+    const scanner = new Html5Qrcode(SCANNER_ID);
+    scannerRef.current = scanner;
+
+    // 逐级回退：首选后置高清连续对焦 → 后置普通 → 任意摄像头
+    const tries: Array<MediaTrackConstraints | { facingMode: string }> = [
+      {
+        facingMode: "environment",
+        width: { ideal: 1920 },
+        height: { ideal: 1080 },
+        advanced: [{ focusMode: "continuous" }],
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      } as any,
+      { facingMode: "environment" },
+      { facingMode: "user" },
+    ];
+    for (const constraint of tries) {
       try {
-        const track = scanner.getRunningTrackSettings?.();
-        if (track) {
+        await scanner.start(constraint, cfg, onDecode, () => {});
+        try {
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           await scanner.applyVideoConstraints({
             advanced: [{ focusMode: "continuous" }],
           } as any);
+        } catch {
+          /* 机型不支持对焦约束 */
         }
+        setScanning(true);
+        return;
       } catch {
-        // 机型不支持对焦约束，忽略
+        /* 换下一个约束重试 */
       }
-      setScanning(true);
-    } catch (e) {
-      setError(
-        "无法启动摄像头，请确认已授予摄像头权限，并使用 HTTPS 或 localhost 访问。",
-      );
-      setScanning(false);
     }
+    scannerRef.current = null;
+    setScanning(false);
+    setError(
+      "无法启动摄像头。请检查：是否已授予摄像头权限、是否被其他应用占用；或直接使用「拍照识别」。",
+    );
   }, [navigate, stopScanner]);
 
   // 用手机原生相机拍照/选图后解码（原生相机对焦更好，识别更稳）
