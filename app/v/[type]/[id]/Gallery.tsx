@@ -6,6 +6,8 @@ export function Gallery({ images, title }: { images: string[]; title: string }) 
   const [active, setActive] = useState(0);
   const [zoom, setZoom] = useState(false);
   const [touchStartX, setTouchStartX] = useState<number | null>(null);
+  const [dragX, setDragX] = useState(0);
+  const [dragging, setDragging] = useState(false);
 
   const prev = () => setActive((i) => (i - 1 + images.length) % images.length);
   const next = () => setActive((i) => (i + 1) % images.length);
@@ -53,23 +55,45 @@ export function Gallery({ images, title }: { images: string[]; title: string }) 
 
       {zoom && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 p-4"
+          className="fixed inset-0 z-50 flex items-center justify-center overflow-hidden bg-black/90"
           onClick={() => setZoom(false)}
-          onTouchStart={(e) => setTouchStartX(e.touches[0].clientX)}
-          onTouchEnd={(e) => {
+          onTouchStart={(e) => {
+            setTouchStartX(e.touches[0].clientX);
+            setDragging(true);
+          }}
+          onTouchMove={(e) => {
             if (touchStartX === null) return;
-            const dx = e.changedTouches[0].clientX - touchStartX;
-            if (dx > 50) prev();
-            else if (dx < -50) next();
+            setDragX(e.touches[0].clientX - touchStartX);
+          }}
+          onTouchEnd={() => {
+            if (dragX > 50) prev();
+            else if (dragX < -50) next();
             setTouchStartX(null);
+            setDragX(0);
+            setDragging(false);
           }}
         >
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src={images[active]}
-            alt={title}
-            className="max-h-full max-w-full cursor-zoom-out object-contain"
-          />
+          <div
+            className="flex h-full w-full"
+            style={{
+              transform: `translateX(calc(-${active * 100}% + ${dragX}px))`,
+              transition: dragging ? "none" : "transform 0.3s ease-out",
+            }}
+          >
+            {images.map((url) => (
+              <div
+                key={url}
+                className="flex h-full w-full flex-shrink-0 items-center justify-center p-4"
+              >
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={url}
+                  alt={title}
+                  className="max-h-full max-w-full cursor-zoom-out object-contain"
+                />
+              </div>
+            ))}
+          </div>
           {images.length > 1 && (
             <>
               <button
