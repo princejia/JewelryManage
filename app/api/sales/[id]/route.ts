@@ -58,7 +58,10 @@ export async function PATCH(
           : undefined,
         sold_at: parsed.data.sold_at ?? undefined,
         sale_price: parsed.data.sale_price ?? undefined,
-        settled_amount: parsed.data.sale_price ?? undefined,
+        settled_amount:
+          parsed.data.sale_status === "consignment"
+            ? 0
+            : parsed.data.sale_price ?? undefined,
       })
       .eq("id", sale.product_id);
   } else if (sale.loose_stone_id) {

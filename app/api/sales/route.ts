@@ -67,7 +67,7 @@ export async function POST(req: NextRequest) {
         is_consignment: saleStatus === "consignment",
         sold_at: soldAt,
         sale_price: parsed.data.sale_price,
-        settled_amount: parsed.data.sale_price,
+        settled_amount: saleStatus === "consignment" ? 0 : parsed.data.sale_price,
       })
       .eq("id", parsed.data.product_id);
   } else if (parsed.data.loose_stone_id) {
