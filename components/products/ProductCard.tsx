@@ -58,11 +58,12 @@ export function ProductCard({ product }: { product: Product }) {
               <span className="text-blue-600">裸石</span>
             )}
           </div>
-          {product.unsettled_amount > 0 && (
-            <p className="mt-1 text-xs text-red-500">
-              未结款：{formatCurrency(product.unsettled_amount)}
-            </p>
-          )}
+          {product.sale_status !== "in_stock" &&
+            product.unsettled_amount > 0 && (
+              <p className="mt-1 text-xs text-red-500">
+                未结款：{formatCurrency(product.unsettled_amount)}
+              </p>
+            )}
           {product.sale_status !== "in_stock" && product.sold_at && (
             <p className="mt-1 text-xs text-gray-400">
               出售时间：{formatDate(product.sold_at)}
