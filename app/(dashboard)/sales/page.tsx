@@ -12,6 +12,7 @@ import {
 import { Receipt, TrendingUp, Users } from "lucide-react";
 import { formatCurrency, formatDate } from "@/lib/utils";
 import { RecordSaleDialog } from "@/components/sales/RecordSaleDialog";
+import { SaleRowActions } from "@/components/sales/SaleRowActions";
 import { ReturnsManager } from "@/components/sales/ReturnsManager";
 
 export const dynamic = "force-dynamic";
@@ -78,12 +79,13 @@ export default async function SalesPage() {
               <TableHead className="text-right">成交价</TableHead>
               <TableHead>付款方式</TableHead>
               <TableHead>成交时间</TableHead>
+              <TableHead className="text-right">操作</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {sales.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={6} className="text-center text-gray-400">
+                <TableCell colSpan={7} className="text-center text-gray-400">
                   暂无销售记录
                 </TableCell>
               </TableRow>
@@ -108,6 +110,9 @@ export default async function SalesPage() {
                   </TableCell>
                   <TableCell>{s.payment_method || "-"}</TableCell>
                   <TableCell>{formatDate(s.sold_at)}</TableCell>
+                  <TableCell className="text-right">
+                    <SaleRowActions sale={s} />
+                  </TableCell>
                 </TableRow>
               ))
             )}
