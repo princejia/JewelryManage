@@ -30,7 +30,7 @@ export function TopNav() {
         <MobileNav />
         <span className="text-xl shrink-0">💎</span>
         <span className="truncate text-base font-semibold text-amber-800">
-          珠宝管理系统
+          CF珠宝管理系统
         </span>
       </div>
       <div className="ml-auto flex shrink-0 items-center gap-2 sm:gap-4">

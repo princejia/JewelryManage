@@ -12,7 +12,7 @@ export function Sidebar() {
     <aside className="hidden w-60 shrink-0 border-r bg-white md:flex md:flex-col">
       <div className="flex h-16 items-center gap-2 border-b px-6">
         <span className="text-2xl">💎</span>
-        <span className="font-semibold text-amber-800">珠宝管理系统</span>
+        <span className="font-semibold text-amber-800">CF珠宝管理系统</span>
       </div>
       <nav className="flex-1 space-y-1 p-3">
         {NAV_ITEMS.map((item) => {

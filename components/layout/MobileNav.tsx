@@ -40,7 +40,7 @@ export function MobileNav() {
               <div className="flex items-center gap-2">
                 <span className="text-2xl">💎</span>
                 <span className="font-semibold text-amber-800">
-                  珠宝管理系统
+                  CF珠宝管理系统
                 </span>
               </div>
               <button
