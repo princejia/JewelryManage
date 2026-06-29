@@ -22,7 +22,7 @@ export default async function SalesPage() {
   const { data } = await supabase
     .from("product_sales")
     .select(
-      "*, products(id, name, image_urls), customers(id, name), loose_stones(id, material, image_urls)"
+      "*, products(id, name, image_urls, sale_status), customers(id, name), loose_stones(id, material, image_urls, sale_status)"
     )
     .order("sold_at", { ascending: false });
 
@@ -75,6 +75,7 @@ export default async function SalesPage() {
             <TableRow>
               <TableHead>物品</TableHead>
               <TableHead>类型</TableHead>
+              <TableHead>销售方式</TableHead>
               <TableHead>客户</TableHead>
               <TableHead className="text-right">成交价</TableHead>
               <TableHead>付款方式</TableHead>
@@ -85,7 +86,7 @@ export default async function SalesPage() {
           <TableBody>
             {sales.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={7} className="text-center text-gray-400">
+                <TableCell colSpan={8} className="text-center text-gray-400">
                   暂无销售记录
                 </TableCell>
               </TableRow>
@@ -102,6 +103,14 @@ export default async function SalesPage() {
                       <span className="text-blue-600">裸石</span>
                     ) : (
                       "产品"
+                    )}
+                  </TableCell>
+                  <TableCell>
+                    {(s.products?.sale_status ?? s.loose_stones?.sale_status) ===
+                    "consignment" ? (
+                      <span className="text-purple-600">借售</span>
+                    ) : (
+                      <span className="text-green-600">出售</span>
                     )}
                   </TableCell>
                   <TableCell>{s.customers?.name ?? "-"}</TableCell>

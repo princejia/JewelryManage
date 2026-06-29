@@ -101,8 +101,8 @@ export interface ProductSale {
 }
 
 export interface ProductSaleWithRelations extends ProductSale {
-  products?: Pick<Product, "id" | "name" | "image_urls"> | null;
-  loose_stones?: Pick<LooseStone, "id" | "material" | "image_urls"> | null;
+  products?: Pick<Product, "id" | "name" | "image_urls" | "sale_status"> | null;
+  loose_stones?: Pick<LooseStone, "id" | "material" | "image_urls" | "sale_status"> | null;
   customers?: Pick<Customer, "id" | "name"> | null;
 }
 

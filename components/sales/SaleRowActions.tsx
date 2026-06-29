@@ -37,7 +37,12 @@ export function SaleRowActions({ sale }: { sale: ProductSaleWithRelations }) {
   const [customerId, setCustomerId] = useState(sale.customer_id ?? NO_CUSTOMER);
   const [salePrice, setSalePrice] = useState(String(sale.sale_price ?? ""));
   const [paymentMethod, setPaymentMethod] = useState(sale.payment_method ?? "");
-  const [saleStatus, setSaleStatus] = useState<"sold" | "consignment">("sold");
+  const [saleStatus, setSaleStatus] = useState<"sold" | "consignment">(
+    (sale.products?.sale_status ?? sale.loose_stones?.sale_status) ===
+      "consignment"
+      ? "consignment"
+      : "sold"
+  );
   const [soldAt, setSoldAt] = useState(sale.sold_at ?? "");
 
   useEffect(() => {
