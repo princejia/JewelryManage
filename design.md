@@ -46,7 +46,7 @@
 | 数据库 | PostgreSQL (Supabase) | 免费 500MB，自带管理界面、认证、实时订阅 |
 | 文件存储 | Supabase Storage | 免费 1GB，用于存储产品图片 |
 | 认证鉴权 | Supabase Auth | 内置用户管理，支持邮箱登录，免费 |
-| 二维码 | qrcode + html5-qrcode | 客户端生成标签二维码（qrcode）与拍照/选图识别（html5-qrcode scanFile），纯前端运行，免费 |
+| 二维码 | qrcode + jspdf + html5-qrcode | 客户端生成标签二维码（qrcode）、导出标签 PDF（jspdf）与拍照/选图识别（html5-qrcode scanFile），纯前端运行，免费 |
 | 部署托管 | Vercel | 个人项目免费，自动 CI/CD，与 Next.js 原生集成 |
 
 ---
@@ -424,7 +424,7 @@ jewelry-system/
 ├── lib/
 │   ├── supabase.ts                  # Supabase 客户端
 │   ├── supabase-server.ts           # 服务端 Supabase 客户端
-│   ├── labels.ts                    # 标签二维码生成与打印
+│   ├── labels.ts                    # 标签二维码生成与 PDF 导出
 │   └── utils.ts                     # 工具函数（格式化金额等）
 ├── types/
 │   └── index.ts                     # TypeScript 类型定义
@@ -469,7 +469,7 @@ jewelry-system/
 - 关键词搜索：按产品名称全文搜索
 - 排序：价格、购入时间、创建时间（升序/降序）
 - 批量操作：批量导出 Excel（首张图片嵌入第一列）
-- **打印标签**：一键为当前列表的产品生成标签并打开打印窗口，每个标签含二维码（编码展示页链接）、编号、名称
+- **标签 PDF**：一键为当前列表的产品生成标签并保存为 PDF，每个标签含二维码（编码展示页链接）、编号、名称
 - **点击编号进入编辑**：表格视图中点击产品编号或名称均可进入对应产品的编辑页
 
 #### 产品新增/编辑页 `/products/new` 和 `/products/[id]`
@@ -526,13 +526,13 @@ jewelry-system/
 
 #### 标签打印
 
-- 在【产品管理】与【裸石管理】列表页点击「打印标签」按钮，为当前列表中的全部条目生成标签
+- 在【产品管理】与【裸石管理】列表页点击「标签 PDF」按钮，为当前列表中的全部条目生成标签；产品编辑页与裸石编辑弹窗也可为当前单个物品生成标签
 - 每个标签包含三部分：
   - **二维码**：编码指向公开展示页 `/v/<p|s>/<id>`（`p` = 产品，`s` = 裸石）
   - **编号**：产品 `P...` / 裸石 `L...`
   - **名称**：产品名称 / 裸石产品名称
-- 标签以 48mm × 30mm 排版并自动唤起浏览器打印对话框，每张标签保留虚线边框作为裁剪分隔参考线
-- 二维码生成在客户端完成（`lib/labels.ts` 使用 `qrcode` 库输出 Data URL），无需后端参与
+- 标签以 48mm × 30mm 排版生成 PDF 并下载保存（不再直接打印），每张标签保留虚线边框作为裁剪分隔参考线
+- 二维码生成与 PDF 输出均在客户端完成（`lib/labels.ts` 使用 `qrcode` + `jspdf`），无需后端参与
 
 #### 扫码查询 `/scan`
 
@@ -1039,8 +1039,8 @@ npm install zod react-hook-form @hookform/resolvers
 # 安装 Excel 导出（exceljs 支持图片嵌入，xlsx 用于报表）
 npm install exceljs xlsx
 
-# 安装二维码生成与扫码识别（标签打印 / 扫码查询）
-npm install qrcode html5-qrcode
+# 安装二维码生成、PDF 导出与扫码识别（标签 PDF / 扫码查询）
+npm install qrcode jspdf html5-qrcode
 npm install -D @types/qrcode
 ```
 

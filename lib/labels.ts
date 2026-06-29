@@ -1,19 +1,11 @@
 import QRCode from "qrcode";
+import { jsPDF } from "jspdf";
 
 export interface LabelItem {
   id: string;
   code: string;
   name: string;
   type: "product" | "stone";
-}
-
-function escapeHtml(value: string): string {
-  return value
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&#39;");
 }
 
 /**
@@ -26,129 +18,69 @@ function buildQrPayload(item: LabelItem, origin: string): string {
   return `${origin}/v/${t}/${encodeURIComponent(item.id)}`;
 }
 
+// 单个标签尺寸（mm）
+const LABEL_W = 48;
+const LABEL_H = 30;
+const MARGIN = 8;
+const GAP = 4;
+const QR_SIZE = 22;
+
 /**
- * 为给定的产品/裸石生成标签列表并打开打印窗口。
- * 每个标签包含：二维码（编码对应 id）、编号、名称。
+ * 为给定的产品/裸石生成标签 PDF 并下载保存。
+ * 每个标签包含：二维码（编码展示页链接）、编号、名称，按 A4 网格排版，
+ * 标签带虚线边框作为裁剪参考线。
  */
-export async function printLabels(items: LabelItem[]): Promise<void> {
+export async function saveLabelsPdf(items: LabelItem[]): Promise<void> {
   if (items.length === 0) return;
 
   const origin = window.location.origin;
+  const doc = new jsPDF({ unit: "mm", format: "a4" });
+  const pageW = doc.internal.pageSize.getWidth();
+  const pageH = doc.internal.pageSize.getHeight();
+  const cols = Math.max(1, Math.floor((pageW - 2 * MARGIN + GAP) / (LABEL_W + GAP)));
+  const rows = Math.max(1, Math.floor((pageH - 2 * MARGIN + GAP) / (LABEL_H + GAP)));
+  const perPage = cols * rows;
 
-  const labelsHtml = (
-    await Promise.all(
-      items.map(async (item) => {
-        const payload = buildQrPayload(item, origin);
-        const qr = await QRCode.toDataURL(payload, {
-          margin: 0,
-          width: 240,
-          errorCorrectionLevel: "M",
-        });
-        return `
-          <div class="label">
-            <img class="qr" src="${qr}" alt="二维码" />
-            <div class="info">
-              <div class="code">${escapeHtml(item.code)}</div>
-              <div class="name">${escapeHtml(item.name)}</div>
-            </div>
-          </div>`;
-      }),
-    )
-  ).join("");
+  for (let i = 0; i < items.length; i++) {
+    const item = items[i];
+    const idx = i % perPage;
+    if (i > 0 && idx === 0) doc.addPage();
 
-  const win = window.open("", "_blank", "width=900,height=700");
-  if (!win) {
-    alert("无法打开打印窗口，请检查浏览器是否拦截了弹出窗口。");
-    return;
+    const col = idx % cols;
+    const row = Math.floor(idx / cols);
+    const x = MARGIN + col * (LABEL_W + GAP);
+    const y = MARGIN + row * (LABEL_H + GAP);
+
+    // 虚线裁剪边框
+    doc.setDrawColor(160);
+    doc.setLineDashPattern([1, 1], 0);
+    doc.roundedRect(x, y, LABEL_W, LABEL_H, 1, 1);
+    doc.setLineDashPattern([], 0);
+
+    // 二维码
+    const qr = await QRCode.toDataURL(buildQrPayload(item, origin), {
+      margin: 0,
+      width: 240,
+      errorCorrectionLevel: "M",
+    });
+    const qrY = y + (LABEL_H - QR_SIZE) / 2;
+    doc.addImage(qr, "PNG", x + 3, qrY, QR_SIZE, QR_SIZE);
+
+    // 文本区
+    const textX = x + 3 + QR_SIZE + 3;
+    const textW = LABEL_W - (3 + QR_SIZE + 3) - 3;
+    doc.setTextColor(90);
+    doc.setFontSize(8);
+    doc.text(doc.splitTextToSize(item.code, textW), textX, y + 11);
+    doc.setTextColor(17);
+    doc.setFontSize(10);
+    doc.text(doc.splitTextToSize(item.name, textW), textX, y + 18);
   }
 
-  win.document.write(`<!DOCTYPE html>
-<html lang="zh-CN">
-<head>
-  <meta charset="utf-8" />
-  <title>标签打印</title>
-  <style>
-    * { box-sizing: border-box; }
-    body {
-      margin: 0;
-      padding: 12px;
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Microsoft YaHei", sans-serif;
-      background: #fff;
-    }
-    .sheet {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 8px;
-    }
-    .label {
-      width: 48mm;
-      height: 30mm;
-      border: 1px dashed #999;
-      border-radius: 4px;
-      padding: 2mm;
-      display: flex;
-      align-items: center;
-      gap: 2mm;
-      page-break-inside: avoid;
-    }
-    .label .qr {
-      width: 24mm;
-      height: 24mm;
-      flex-shrink: 0;
-    }
-    .label .info {
-      flex: 1;
-      min-width: 0;
-      overflow: hidden;
-    }
-    .label .code {
-      font-family: "Courier New", monospace;
-      font-size: 9px;
-      color: #666;
-      word-break: break-all;
-    }
-    .label .name {
-      font-size: 12px;
-      font-weight: 600;
-      color: #111;
-      margin-top: 1mm;
-      overflow-wrap: anywhere;
-    }
-    .toolbar {
-      margin-bottom: 12px;
-    }
-    .toolbar button {
-      padding: 6px 16px;
-      font-size: 14px;
-      border: 1px solid #d97706;
-      background: #f59e0b;
-      color: #fff;
-      border-radius: 6px;
-      cursor: pointer;
-    }
-    @media print {
-      body { padding: 0; }
-      .toolbar { display: none; }
-      .label {
-        border: 1px dashed #999;
-        -webkit-print-color-adjust: exact;
-        print-color-adjust: exact;
-      }
-    }
-  </style>
-</head>
-<body>
-  <div class="toolbar">
-    <button onclick="window.print()">打印</button>
-  </div>
-  <div class="sheet">${labelsHtml}</div>
-</body>
-</html>`);
+  doc.save(`labels-${new Date().toISOString().slice(0, 10)}.pdf`);
+}
 
-  win.document.close();
-  win.focus();
-  // 等待图片渲染后自动唤起打印对话框
-  win.onload = () => {
-    setTimeout(() => win.print(), 200);
-  };
+/** 旧入口保留兼容：现统一改为保存 PDF。 */
+export async function printLabels(items: LabelItem[]): Promise<void> {
+  return saveLabelsPdf(items);
 }

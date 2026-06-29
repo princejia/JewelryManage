@@ -5,7 +5,7 @@ import { Plus, LayoutGrid, List, Loader2, Download, QrCode } from "lucide-react"
 import { LooseStone } from "@/types";
 import { Button } from "@/components/ui/button";
 import { exportLooseStonesToExcel } from "@/lib/export";
-import { printLabels } from "@/lib/labels";
+import { saveLabelsPdf } from "@/lib/labels";
 import { formatProductCode } from "@/lib/utils";
 import { LooseStoneCard } from "@/components/loose-stones/LooseStoneCard";
 import { LooseStoneTable } from "@/components/loose-stones/LooseStoneTable";
@@ -130,7 +130,7 @@ export default function LooseStonesPage() {
           <Button
             variant="outline"
             onClick={() =>
-              printLabels(
+              saveLabelsPdf(
                 stones.map((s) => ({
                   id: s.id,
                   code: s.code ?? formatProductCode("L", s.created_at),
@@ -142,7 +142,7 @@ export default function LooseStonesPage() {
             disabled={stones.length === 0}
           >
             <QrCode className="h-4 w-4" />
-            打印标签
+            标签 PDF
           </Button>
           <Button onClick={openCreate}>
             <Plus className="h-4 w-4" />

@@ -5,6 +5,7 @@ import { createServerClient } from "@/lib/supabase-server";
 import { Product } from "@/types";
 import { ProductForm } from "@/components/products/ProductForm";
 import { DeleteProductButton } from "@/components/products/DeleteProductButton";
+import { LabelPdfButton } from "@/components/products/LabelPdfButton";
 import { formatProductCode } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
@@ -41,7 +42,17 @@ export default async function ProductDetailPage({
             编号：{product.code ?? formatProductCode("P", product.created_at)}
           </p>
         </div>
-        <DeleteProductButton id={product.id} />
+        <div className="flex items-center gap-2">
+          <LabelPdfButton
+            item={{
+              id: product.id,
+              code: product.code ?? formatProductCode("P", product.created_at),
+              name: product.name,
+              type: "product",
+            }}
+          />
+          <DeleteProductButton id={product.id} />
+        </div>
       </div>
 
       <div className="rounded-xl border bg-white p-6">

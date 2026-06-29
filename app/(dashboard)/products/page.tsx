@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { ProductCard } from "@/components/products/ProductCard";
 import { ProductTable } from "@/components/products/ProductTable";
 import { exportProductsToExcel } from "@/lib/export";
-import { printLabels } from "@/lib/labels";
+import { saveLabelsPdf } from "@/lib/labels";
 import { formatProductCode } from "@/lib/utils";
 import {
   ProductFilters,
@@ -88,7 +88,7 @@ export default function ProductsPage() {
           <Button
             variant="outline"
             onClick={() =>
-              printLabels(
+              saveLabelsPdf(
                 products.map((p) => ({
                   id: p.id,
                   code: p.code ?? formatProductCode("P", p.created_at),
@@ -100,7 +100,7 @@ export default function ProductsPage() {
             disabled={products.length === 0}
           >
             <QrCode className="h-4 w-4" />
-            打印标签
+            标签 PDF
           </Button>
           <Button asChild>
             <Link href="/products/new">
