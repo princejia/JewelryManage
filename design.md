@@ -75,7 +75,7 @@
 | sale_price | 出售价(¥) | DECIMAL(12,2) | 真实成交出售价格，销售时回写 |
 | sale_status | 销售情况 | ENUM | in_stock（在库）/ sold（已售）/ consignment（借售），在【销售管理】中变更 |
 | settled_amount | 结款(¥) | DECIMAL(12,2) | 已收款金额 |
-| unsettled_amount | 未结款(¥) | DECIMAL(12,2) | **自动计算** = price - settled_amount |
+| unsettled_amount | 未结款(¥) | DECIMAL(12,2) | **自动计算** = price - settled_amount（仅对已售/借售展示，在库不显示） |
 | is_consignment | 借售 | BOOLEAN | 是否为借售/寄售模式 |
 | is_loose_stone | 裸石 | BOOLEAN | 是否为裸石（未镶嵌） |
 | profit | 利润(¥) | DECIMAL(12,2) | **自动计算** = price - purchase_price |
@@ -444,9 +444,9 @@ jewelry-system/
 
 - **统计卡片**
   - 在库产品数量
-  - 本月销售额
-  - 本月利润
-  - 未结款总额
+  - 本月销售额（按成交价 `sale_price` 汇总，扣除本月退款）
+  - 本月利润（成交价 − 进货价，扣除本月退款）
+  - 未结款总额（**仅统计已售/借售**，在库产品不计入）
   - 借售中产品数量
 - **图表**
   - 近 30 天销售趋势折线图
@@ -513,7 +513,7 @@ jewelry-system/
 | 报表名称 | 内容说明 |
 |----------|----------|
 | 利润统计报表 | 按月/季/年统计利润，对比环比增长 |
-| 未结款汇总 | 列出所有未完全收款记录，支持催款标记 |
+| 未结款汇总 | 列出已售/借售中未完全收款记录，支持催款标记 |
 | 库存价值报告 | 当前在库产品总价值、成本价值、预计利润空间 |
 | 借售产品追踪 | 所有借售产品状态、借出时间 |
 | 产品周转分析 | 平均库存周转天数，快销/滞销产品识别 |
@@ -982,7 +982,7 @@ export function ProductCard({ product }: { product: Product }) {
           {product.origin && <span>{product.origin}</span>}
           {product.is_loose_stone && <span className="text-blue-600">裸石</span>}
         </div>
-        {product.unsettled_amount > 0 && (
+        {product.sale_status !== 'in_stock' && product.unsettled_amount > 0 && (
           <p className="text-xs text-red-500 mt-1">未结款：¥{product.unsettled_amount.toLocaleString()}</p>
         )}
       </div>
