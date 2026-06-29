@@ -47,11 +47,15 @@ export default async function DashboardPage() {
     (p) => p.sold_at && p.sold_at >= ms
   );
   const monthRevenueGross = soldThisMonth.reduce(
-    (s, p) => s + Number(p.sale_price || 0),
+    (s, p) => s + Number(p.sale_price || 0) - Number(p.unsettled_amount || 0),
     0
   );
   const monthProfitGross = soldThisMonth.reduce(
-    (s, p) => s + (Number(p.sale_price || 0) - Number(p.purchase_price || 0)),
+    (s, p) =>
+      s +
+      (Number(p.sale_price || 0) -
+        Number(p.unsettled_amount || 0) -
+        Number(p.purchase_price || 0)),
     0
   );
 
