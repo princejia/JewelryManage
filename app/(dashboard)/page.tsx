@@ -32,10 +32,9 @@ export default async function DashboardPage() {
     (p) => p.sale_status === "consignment"
   ).length;
   const sold = list.filter((p) => p.sale_status === "sold").length;
-  const unsettledTotal = list.reduce(
-    (sum, p) => sum + Number(p.unsettled_amount || 0),
-    0
-  );
+  const unsettledTotal = list
+    .filter((p) => p.sale_status === "sold" || p.sale_status === "consignment")
+    .reduce((sum, p) => sum + Number(p.unsettled_amount || 0), 0);
 
   const statusData = [
     { key: "in_stock", name: "在库", value: inStock },
@@ -48,11 +47,11 @@ export default async function DashboardPage() {
     (p) => p.sold_at && p.sold_at >= ms
   );
   const monthRevenueGross = soldThisMonth.reduce(
-    (s, p) => s + Number(p.price || 0),
+    (s, p) => s + Number(p.sale_price || 0),
     0
   );
   const monthProfitGross = soldThisMonth.reduce(
-    (s, p) => s + Number(p.profit || 0),
+    (s, p) => s + (Number(p.sale_price || 0) - Number(p.purchase_price || 0)),
     0
   );
 

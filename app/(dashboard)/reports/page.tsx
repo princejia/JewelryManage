@@ -37,14 +37,21 @@ export default async function ReportsPage() {
     const sold = list.filter((p) => p.sold_at === d);
     days.push({
       date: d.slice(5),
-      revenue: sold.reduce((s, p) => s + Number(p.price || 0), 0),
-      profit: sold.reduce((s, p) => s + Number(p.profit || 0), 0),
+      revenue: sold.reduce((s, p) => s + Number(p.sale_price || 0), 0),
+      profit: sold.reduce(
+        (s, p) => s + (Number(p.sale_price || 0) - Number(p.purchase_price || 0)),
+        0
+      ),
     });
   }
 
-  // 未结款汇总
+  // 未结款汇总（仅已售/借售，在库产品不计入未结款）
   const unsettledList = list
-    .filter((p) => Number(p.unsettled_amount) > 0)
+    .filter(
+      (p) =>
+        (p.sale_status === "sold" || p.sale_status === "consignment") &&
+        Number(p.unsettled_amount) > 0
+    )
     .sort((a, b) => Number(b.unsettled_amount) - Number(a.unsettled_amount));
 
   // 借售产品追踪
