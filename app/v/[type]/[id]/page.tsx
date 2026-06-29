@@ -6,6 +6,7 @@ import { SUPABASE_URL, SUPABASE_ANON_KEY } from "@/lib/supabase-public";
 import { categoryLabel } from "@/lib/constants";
 import { formatProductCode } from "@/lib/utils";
 import { Product, LooseStone } from "@/types";
+import { Gallery } from "./Gallery";
 
 export const dynamic = "force-dynamic";
 
@@ -39,14 +40,14 @@ export default async function PublicViewPage({
 
   let title: string;
   let code: string;
-  let image: string | undefined;
+  let images: string[];
   let fields: Field[];
 
   if (type === "p") {
     const p = data as Product;
     title = p.name;
     code = p.code ?? formatProductCode("P", p.created_at);
-    image = p.image_urls?.[0];
+    images = p.image_urls ?? [];
     fields = [
       { label: "重量", value: p.total_weight != null ? `${p.total_weight}${p.weight_unit || "g"}` : null },
       { label: "尺寸", value: p.size },
@@ -59,7 +60,7 @@ export default async function PublicViewPage({
     const s = data as LooseStone;
     title = s.material || "未命名裸石";
     code = s.code ?? formatProductCode("L", s.created_at);
-    image = s.image_urls?.[0];
+    images = s.image_urls ?? [];
     fields = [
       { label: "重量", value: s.weight != null ? `${s.weight}${s.weight_unit || "g"}` : null },
       { label: "尺寸", value: s.size },
@@ -75,20 +76,7 @@ export default async function PublicViewPage({
     <div className="min-h-screen bg-gradient-to-b from-amber-50 via-white to-rose-50">
       <div className="mx-auto max-w-md px-4 py-10">
         <div className="overflow-hidden rounded-3xl border border-amber-100 bg-white shadow-xl shadow-amber-100/40">
-          <div className="aspect-square w-full bg-gradient-to-br from-amber-100 to-rose-100">
-            {image ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
-                src={image}
-                alt={title}
-                className="h-full w-full object-cover"
-              />
-            ) : (
-              <div className="flex h-full w-full items-center justify-center text-7xl">
-                💎
-              </div>
-            )}
-          </div>
+          <Gallery images={images} title={title} />
 
           <div className="p-6">
             <h1 className="text-2xl font-bold text-gray-900">{title}</h1>
