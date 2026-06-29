@@ -33,7 +33,7 @@ export default async function DashboardPage() {
   ).length;
   const sold = list.filter((p) => p.sale_status === "sold").length;
   const unsettledTotal = list
-    .filter((p) => p.sale_status === "sold" || p.sale_status === "consignment")
+    .filter((p) => p.sale_status === "consignment")
     .reduce((sum, p) => sum + Number(p.unsettled_amount || 0), 0);
 
   const statusData = [
@@ -74,6 +74,7 @@ export default async function DashboardPage() {
   const overdueUnsettled = list
     .filter(
       (p) =>
+        p.sale_status === "consignment" &&
         Number(p.unsettled_amount) > 0 &&
         p.sold_at &&
         p.sold_at <= sevenDaysAgo

@@ -58,7 +58,7 @@ export function ProductCard({ product }: { product: Product }) {
               <span className="text-blue-600">裸石</span>
             )}
           </div>
-          {product.sale_status !== "in_stock" &&
+          {product.sale_status === "consignment" &&
             product.unsettled_amount > 0 && (
               <p className="mt-1 text-xs text-red-500">
                 未结款：{formatCurrency(product.unsettled_amount)}

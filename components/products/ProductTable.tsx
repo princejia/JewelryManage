@@ -71,7 +71,7 @@ export function ProductTable({ products }: { products: Product[] }) {
                   {formatCurrency(p.price)}
                 </TableCell>
                 <TableCell className="text-right">
-                  {p.sale_status !== "in_stock" && p.unsettled_amount > 0 ? (
+                  {p.sale_status === "consignment" && p.unsettled_amount > 0 ? (
                     <span className="text-red-500">
                       {formatCurrency(p.unsettled_amount)}
                     </span>

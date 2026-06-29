@@ -45,12 +45,10 @@ export default async function ReportsPage() {
     });
   }
 
-  // 未结款汇总（仅已售/借售，在库产品不计入未结款）
+  // 未结款汇总（仅借售，在库/已售不计入未结款）
   const unsettledList = list
     .filter(
-      (p) =>
-        (p.sale_status === "sold" || p.sale_status === "consignment") &&
-        Number(p.unsettled_amount) > 0
+      (p) => p.sale_status === "consignment" && Number(p.unsettled_amount) > 0
     )
     .sort((a, b) => Number(b.unsettled_amount) - Number(a.unsettled_amount));
 
