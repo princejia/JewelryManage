@@ -48,7 +48,7 @@ export default function LoginPage() {
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
           <div className="mx-auto mb-2 text-4xl">💎</div>
-          <CardTitle className="text-2xl">珠宝黄金销售管理系统</CardTitle>
+          <CardTitle className="text-2xl">CF珠宝管理系统</CardTitle>
           <CardDescription>请登录以继续</CardDescription>
         </CardHeader>
         <CardContent>

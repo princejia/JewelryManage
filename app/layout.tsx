@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "珠宝黄金销售管理系统",
+  title: "CF珠宝管理系统",
   description: "Jewelry & Gold Sales Management System",
 };
 
