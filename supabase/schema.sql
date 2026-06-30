@@ -334,3 +334,29 @@ DROP POLICY IF EXISTS "Anyone can read product images" ON storage.objects;
 CREATE POLICY "Anyone can read product images"
   ON storage.objects FOR SELECT
   USING (bucket_id = 'product-images');
+
+-- ============================================================
+-- 应用账号表（自建用户名登录，密码 bcrypt 哈希）
+-- 仅供服务端 service_role 访问，RLS 默认拒绝 anon/authenticated
+-- ============================================================
+CREATE TABLE IF NOT EXISTS app_users (
+  id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  username      VARCHAR(100) NOT NULL UNIQUE,
+  password_hash TEXT NOT NULL,
+  role          VARCHAR(20) NOT NULL DEFAULT 'user', -- super_admin / user
+  is_active     BOOLEAN NOT NULL DEFAULT TRUE,
+  created_at    TIMESTAMPTZ DEFAULT NOW()
+);
+
+ALTER TABLE app_users ENABLE ROW LEVEL SECURITY;
+-- 不创建任何 policy：anon/authenticated 一律拒绝，只有 service_role 可读写。
+
+-- 初始超级管理员：用户名 princejia@gmail.com，密码 123456（bcrypt）
+-- 如需修改密码，请通过应用后台或重新生成 bcrypt 哈希。
+INSERT INTO app_users (username, password_hash, role)
+VALUES (
+  'princejia@gmail.com',
+  '$2b$10$gdbDVLCEHUcUsPu46bZCW.pKE263HLgQyoDFu5B5H/vL2U6hLo8sC',
+  'super_admin'
+)
+ON CONFLICT (username) DO NOTHING;

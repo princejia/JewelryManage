@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
@@ -7,6 +8,18 @@ import { NAV_ITEMS } from "@/components/layout/nav-items";
 
 export function Sidebar() {
   const pathname = usePathname();
+  const [role, setRole] = useState<string>("");
+
+  useEffect(() => {
+    fetch("/api/auth/me", { cache: "no-store" })
+      .then((r) => (r.ok ? r.json() : { user: null }))
+      .then((j) => setRole(j.user?.role ?? ""))
+      .catch(() => setRole(""));
+  }, []);
+
+  const items = NAV_ITEMS.filter(
+    (item) => !item.superAdminOnly || role === "super_admin"
+  );
 
   return (
     <aside className="hidden w-60 shrink-0 border-r bg-white md:flex md:flex-col">
@@ -15,7 +28,7 @@ export function Sidebar() {
         <span className="font-semibold text-amber-800">CF珠宝管理系统</span>
       </div>
       <nav className="flex-1 space-y-1 p-3">
-        {NAV_ITEMS.map((item) => {
+        {items.map((item) => {
           const active =
             item.href === "/"
               ? pathname === "/"

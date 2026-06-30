@@ -2,24 +2,23 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { createBrowserClient } from "@/lib/supabase-browser";
 import { LogOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { MobileNav } from "@/components/layout/MobileNav";
 
 export function TopNav() {
   const router = useRouter();
-  const supabase = createBrowserClient();
-  const [email, setEmail] = useState<string>("");
+  const [username, setUsername] = useState<string>("");
 
   useEffect(() => {
-    supabase.auth.getUser().then(({ data }) => {
-      setEmail(data.user?.email ?? "");
-    });
-  }, [supabase]);
+    fetch("/api/auth/me", { cache: "no-store" })
+      .then((r) => (r.ok ? r.json() : { user: null }))
+      .then((j) => setUsername(j.user?.username ?? ""))
+      .catch(() => setUsername(""));
+  }, []);
 
   async function handleLogout() {
-    await supabase.auth.signOut();
+    await fetch("/api/auth/logout", { method: "POST" });
     router.replace("/login");
     router.refresh();
   }
@@ -34,8 +33,10 @@ export function TopNav() {
         </span>
       </div>
       <div className="ml-auto flex shrink-0 items-center gap-2 sm:gap-4">
-        {email && (
-          <span className="hidden text-sm text-gray-600 sm:inline">{email}</span>
+        {username && (
+          <span className="hidden text-sm text-gray-600 sm:inline">
+            {username}
+          </span>
         )}
         <Button variant="ghost" size="sm" onClick={handleLogout}>
           <LogOut className="h-4 w-4" />

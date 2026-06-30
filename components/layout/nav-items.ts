@@ -7,6 +7,7 @@ import {
   BarChart3,
   ArrowLeftRight,
   ScanLine,
+  ShieldCheck,
   type LucideIcon,
 } from "lucide-react";
 
@@ -14,6 +15,7 @@ export interface NavItem {
   href: string;
   label: string;
   icon: LucideIcon;
+  superAdminOnly?: boolean;
 }
 
 export const NAV_ITEMS: NavItem[] = [
@@ -25,4 +27,5 @@ export const NAV_ITEMS: NavItem[] = [
   { href: "/loans", label: "借调管理", icon: ArrowLeftRight },
   { href: "/customers", label: "客户管理", icon: Users },
   { href: "/reports", label: "财务报表", icon: BarChart3 },
+  { href: "/users", label: "账号管理", icon: ShieldCheck, superAdminOnly: true },
 ];

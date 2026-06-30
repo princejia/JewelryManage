@@ -1,17 +1,9 @@
-import { createMiddlewareClient } from "@supabase/auth-helpers-nextjs";
 import { NextRequest, NextResponse } from "next/server";
-import { SUPABASE_URL, SUPABASE_ANON_KEY } from "@/lib/supabase-public";
+import { AUTH_COOKIE, verifySession } from "@/lib/auth";
 
 export async function middleware(req: NextRequest) {
-  const res = NextResponse.next();
-  const supabase = createMiddlewareClient(
-    { req, res },
-    { supabaseUrl: SUPABASE_URL, supabaseKey: SUPABASE_ANON_KEY }
-  );
-
-  const {
-    data: { session },
-  } = await supabase.auth.getSession();
+  const token = req.cookies.get(AUTH_COOKIE)?.value;
+  const session = await verifySession(token);
 
   // 未登录用户重定向到登录页（扫码公开展示页 /v 除外）
   if (
@@ -27,7 +19,7 @@ export async function middleware(req: NextRequest) {
     return NextResponse.redirect(new URL("/", req.url));
   }
 
-  return res;
+  return NextResponse.next();
 }
 
 export const config = {

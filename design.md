@@ -45,7 +45,7 @@
 | 后端 API | Next.js API Routes | Serverless 函数，与前端同仓库，零运维成本 |
 | 数据库 | PostgreSQL (Supabase) | 免费 500MB，自带管理界面、认证、实时订阅 |
 | 文件存储 | Supabase Storage | 免费 1GB，用于存储产品图片 |
-| 认证鉴权 | Supabase Auth | 内置用户管理，支持邮箱登录，免费 |
+| 认证鉴权 | 自建用户名登录（JWT + bcrypt） | 账号存于 `app_users` 表，密码 bcrypt 哈希；jose 签发 HS256 会话存于 httpOnly Cookie，仅超管可后台新增账号 |
 | 二维码 | qrcode + jspdf + html5-qrcode | 客户端生成标签二维码（qrcode）、导出标签 PDF（jspdf）与拍照/选图识别（html5-qrcode scanFile），纯前端运行，免费 |
 | 部署托管 | Vercel | 个人项目免费，自动 CI/CD，与 Next.js 原生集成 |
 
@@ -361,7 +361,7 @@ CREATE INDEX idx_item_loans_returned ON item_loans(returned_at);
 【Supabase 云服务】
   ├── PostgreSQL 数据库（产品、客户、销售数据）
   ├── Supabase Storage（产品图片文件）
-  └── Supabase Auth（用户登录认证）
+  └── 自建用户名登录（JWT Cookie + app_users 表）
 ```
 
 ### 3.2 项目目录结构
@@ -546,6 +546,22 @@ jewelry-system/
 
 ---
 
+### 4.8 认证与账号管理模块 `/users`
+
+系统采用**自建用户名登录**，不再依赖 Supabase Auth：
+
+- **登录**：用户名 + 密码（`/login` → `POST /api/auth/login`）。后端在 `app_users` 表中按用户名查账号，用 bcrypt 校验密码；成功后用 jose 签发 HS256 JWT，写入 httpOnly Cookie（`auth_token`，有效期 7 天）
+- **会话校验**：`middleware.ts` 在 Edge 运行时用 jose 校验 Cookie 中的 JWT；未登录跳 `/login`（`/v/` 公开页除外）
+- **角色**：`super_admin`（超级管理员）/ `user`（普通用户）
+- **账号管理页 `/users`**：仅 `super_admin` 可见与访问，可新增账号、删除账号（不可删除当前登录账号）、重置密码、设置角色
+- **初始超级管理员**：用户名 `princejia@gmail.com`，密码 `123456`（首次登录时若 `app_users` 为空会自动兜底创建；建议登录后立即修改密码）
+- **密码安全**：仅存储 bcrypt 哈希，登录失败统一提示「用户名或密码错误」，避免暴露账号是否存在
+- `app_users` 表启用 RLS 且不设任何 policy，仅服务端 service_role 可读写
+
+> 部署提示：生产环境请在平台环境变量中配置 `AUTH_SECRET`（JWT 签名密钥），缺失时回退到内置开发密钥，存在安全风险。
+
+---
+
 
 ## 五、API 接口设计
 
@@ -579,6 +595,13 @@ jewelry-system/
 | POST | /api/loans | 登记借出 | 物品为产品或裸石 |
 | PATCH | /api/loans/[id] | 更新/归还借调 | 填写 returned_at 即标记归还 |
 | DELETE | /api/loans/[id] | 删除借调记录 | |
+| POST | /api/auth/login | 登录 | 用户名+密码校验，签发 JWT Cookie；首次自动兜底建超管 |
+| POST | /api/auth/logout | 退出登录 | 清除会话 Cookie |
+| GET | /api/auth/me | 当前登录信息 | 返回 id/用户名/角色，未登录返回 401 |
+| GET | /api/auth/users | 账号列表 | **仅超管** |
+| POST | /api/auth/users | 新增账号 | **仅超管**，密码 bcrypt 存储 |
+| PATCH | /api/auth/users/[id] | 改密码/角色/启停 | **仅超管** |
+| DELETE | /api/auth/users/[id] | 删除账号 | **仅超管**，禁止删除自己 |
 
 ### 5.2 查询参数（GET /api/products）
 
@@ -895,7 +918,7 @@ export async function POST(req: NextRequest) {
 
 | 路由路径 | 页面名称 | 核心功能 |
 |----------|----------|----------|
-| /login | 登录页 | 邮箱密码登录，Supabase Auth 鉴权 |
+| /login | 登录页 | 用户名 + 密码登录（自建 JWT 鉴权） |
 | / | 仪表盘 | 数据总览、快捷操作、待办事项 |
 | /products | 产品列表 | 多视图浏览、筛选、搜索 |
 | /products/new | 新增产品 | 完整产品录入表单 + 图片上传 |
@@ -907,6 +930,7 @@ export async function POST(req: NextRequest) {
 | /loans | 借调管理 | 借出登记、归还、借调状态追踪 |
 | /customers | 客户管理 | 客户档案、购买历史 |
 | /reports | 财务报表 | 多维度统计图表、导出功能 |
+| /users | 账号管理 | **仅超级管理员**：新增/删除账号、重置密码、设置角色 |
 
 ### 6.2 产品表单字段映射
 

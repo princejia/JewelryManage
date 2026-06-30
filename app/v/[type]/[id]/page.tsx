@@ -1,8 +1,6 @@
-import { cookies } from "next/headers";
 import { notFound, redirect } from "next/navigation";
-import { createServerComponentClient } from "@supabase/auth-helpers-nextjs";
 import { createServerClient } from "@/lib/supabase-server";
-import { SUPABASE_URL, SUPABASE_ANON_KEY } from "@/lib/supabase-public";
+import { getCurrentSession } from "@/lib/users";
 import { categoryLabel } from "@/lib/constants";
 import { formatProductCode } from "@/lib/utils";
 import { Product, LooseStone } from "@/types";
@@ -21,13 +19,7 @@ export default async function PublicViewPage({
   if (type !== "p" && type !== "s") notFound();
 
   // 已登录用户直接进入对应编辑页
-  const supabaseAuth = createServerComponentClient(
-    { cookies },
-    { supabaseUrl: SUPABASE_URL, supabaseKey: SUPABASE_ANON_KEY },
-  );
-  const {
-    data: { session },
-  } = await supabaseAuth.auth.getSession();
+  const session = await getCurrentSession();
   if (session) {
     redirect(type === "p" ? `/products/${id}` : `/loose-stones?edit=${id}`);
   }
