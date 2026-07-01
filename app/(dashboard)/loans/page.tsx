@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import Link from "next/link";
 import { Loader2, Trash2, ArrowLeftRight, RotateCcw, Undo2 } from "lucide-react";
 import { ItemLoanWithRelations } from "@/types";
 import { Button } from "@/components/ui/button";
@@ -132,7 +133,18 @@ export default function LoansPage() {
               ) : (
                 loans.map((l) => (
                   <TableRow key={l.id}>
-                    <TableCell className="font-medium">{itemName(l)}</TableCell>
+                    <TableCell className="font-medium">
+                      {l.products ? (
+                        <Link
+                          href={`/products/${l.products.id}/view`}
+                          className="text-amber-700 hover:underline"
+                        >
+                          {l.products.name}
+                        </Link>
+                      ) : (
+                        itemName(l)
+                      )}
+                    </TableCell>
                     <TableCell>
                       {l.loose_stones ? (
                         <span className="text-blue-600">裸石</span>

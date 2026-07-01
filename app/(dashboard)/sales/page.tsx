@@ -97,7 +97,7 @@ export default async function SalesPage() {
                   <TableCell className="font-medium">
                     {s.products ? (
                       <Link
-                        href={`/products/${s.products.id}`}
+                        href={`/products/${s.products.id}/view`}
                         className="text-amber-700 hover:underline"
                       >
                         {s.products.name}
