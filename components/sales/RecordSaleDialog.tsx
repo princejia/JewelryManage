@@ -50,12 +50,16 @@ export function RecordSaleDialog() {
     if (!open) return;
     fetch("/api/products?status=in_stock&limit=100", { cache: "no-store" })
       .then((r) => r.json())
-      .then((j) => setProducts(j.data ?? []));
+      .then((j) =>
+        setProducts((j.data ?? []).filter((p: Product) => !p.is_loaned))
+      );
     fetch("/api/loose-stones", { cache: "no-store" })
       .then((r) => r.json())
       .then((j) =>
         setStones(
-          (j.data ?? []).filter((s: LooseStone) => s.sale_status !== "sold")
+          (j.data ?? []).filter(
+            (s: LooseStone) => s.sale_status !== "sold" && !s.is_loaned
+          )
         )
       );
     fetch("/api/customers", { cache: "no-store" })

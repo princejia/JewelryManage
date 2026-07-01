@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { createServerClient } from "@/lib/supabase-server";
 import { ProductSaleWithRelations, ProductReturn } from "@/types";
 import { StatsCard } from "@/components/ui/StatsCard";
@@ -94,9 +95,16 @@ export default async function SalesPage() {
               sales.map((s) => (
                 <TableRow key={s.id}>
                   <TableCell className="font-medium">
-                    {s.products?.name ??
-                      s.loose_stones?.material ??
-                      "已删除记录"}
+                    {s.products ? (
+                      <Link
+                        href={`/products/${s.products.id}`}
+                        className="text-amber-700 hover:underline"
+                      >
+                        {s.products.name}
+                      </Link>
+                    ) : (
+                      s.loose_stones?.material ?? "已删除记录"
+                    )}
                   </TableCell>
                   <TableCell>
                     {s.loose_stones ? (

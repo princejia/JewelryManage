@@ -40,6 +40,35 @@ export async function POST(req: NextRequest) {
 
   const supabase = createServerClient();
 
+  // 校验：借调中的物品不可出售 / 租售
+  if (parsed.data.product_id) {
+    const { data: activeLoan } = await supabase
+      .from("item_loans")
+      .select("id")
+      .eq("product_id", parsed.data.product_id)
+      .is("returned_at", null)
+      .maybeSingle();
+    if (activeLoan) {
+      return NextResponse.json(
+        { error: "该产品正在借调中，无法出售" },
+        { status: 400 }
+      );
+    }
+  } else if (parsed.data.loose_stone_id) {
+    const { data: activeLoan } = await supabase
+      .from("item_loans")
+      .select("id")
+      .eq("loose_stone_id", parsed.data.loose_stone_id)
+      .is("returned_at", null)
+      .maybeSingle();
+    if (activeLoan) {
+      return NextResponse.json(
+        { error: "该裸石正在借调中，无法出售" },
+        { status: 400 }
+      );
+    }
+  }
+
   const soldAt = parsed.data.sold_at ?? new Date().toISOString().slice(0, 10);
   const saleStatus = parsed.data.sale_status;
 
