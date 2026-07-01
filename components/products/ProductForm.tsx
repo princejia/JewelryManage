@@ -313,26 +313,30 @@ export function ProductForm({ initial }: ProductFormProps) {
           />
         </div>
 
-        <div className="space-y-2">
-          <Label htmlFor="settled_amount">结款 (¥)</Label>
-          <NumberInput
-            id="settled_amount"
-            step="0.01"
-            value={form.settled_amount}
-            onChange={(v) => set("settled_amount", v ?? 0)}
-          />
-        </div>
+        {form.sale_status === "consignment" && (
+          <>
+            <div className="space-y-2">
+              <Label htmlFor="settled_amount">结款 (¥)</Label>
+              <NumberInput
+                id="settled_amount"
+                step="0.01"
+                value={form.settled_amount}
+                onChange={(v) => set("settled_amount", v ?? 0)}
+              />
+            </div>
 
-        <div className="space-y-2">
-          <Label>未结款 (¥)</Label>
-          <div
-            className={`flex h-10 items-center rounded-md border bg-gray-50 px-3 text-sm font-medium ${
-              unsettled > 0 ? "text-red-500" : "text-gray-500"
-            }`}
-          >
-            {formatCurrency(unsettled)}
-          </div>
-        </div>
+            <div className="space-y-2">
+              <Label>未结款 (¥)</Label>
+              <div
+                className={`flex h-10 items-center rounded-md border bg-gray-50 px-3 text-sm font-medium ${
+                  unsettled > 0 ? "text-red-500" : "text-gray-500"
+                }`}
+              >
+                {formatCurrency(unsettled)}
+              </div>
+            </div>
+          </>
+        )}
 
         <div className="space-y-2 sm:col-span-2">
           <Label>利润 (¥)</Label>
