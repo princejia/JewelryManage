@@ -31,14 +31,14 @@ export default function LoginPage() {
       body: JSON.stringify({ username, password }),
     });
 
-    setLoading(false);
-
     if (!res.ok) {
       const json = await res.json().catch(() => ({}));
       setError("登录失败：" + (json.error || "用户名或密码错误"));
+      setLoading(false);
       return;
     }
 
+    // 登录成功后保持加载态，直到跳转完成，避免按钮被重复点击
     router.replace("/");
     router.refresh();
   }
